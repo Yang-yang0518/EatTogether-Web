@@ -1066,7 +1066,9 @@
                     >
                         <span class="font-label confirm-dim">活動</span>
                         <span class="font-label confirm-mid">{{ bestAutoEvent.title }}</span>
-                        <span class="font-label confirm-green">折抵 NT$ {{ autoEventDiscount.toLocaleString() }}</span>
+                        <span class="font-label confirm-green"
+                            >折抵 NT$ {{ autoEventDiscount.toLocaleString() }}</span
+                        >
                     </div>
                     <!-- 贈品型活動：只顯示參加提示 -->
                     <div
@@ -1082,7 +1084,9 @@
                     <div v-if="couponOk && couponDiscount > 0" class="confirm-total-row-3">
                         <span class="font-label confirm-dim">優惠券</span>
                         <span class="font-label confirm-mid">{{ couponCode }}</span>
-                        <span class="font-label confirm-green">折抵 NT$ {{ couponDiscount.toLocaleString() }}</span>
+                        <span class="font-label confirm-green"
+                            >折抵 NT$ {{ couponDiscount.toLocaleString() }}</span
+                        >
                     </div>
                     <!-- 合計（原價） -->
                     <div class="confirm-total-row">
@@ -1096,7 +1100,12 @@
                     >
                         <span class="font-label confirm-dim">折扣</span>
                         <span class="font-label confirm-green"
-                            >－ NT$ {{ (autoEventDiscount + (couponOk ? couponDiscount : 0)).toLocaleString() }}</span
+                            >－ NT$
+                            {{
+                                (
+                                    autoEventDiscount + (couponOk ? couponDiscount : 0)
+                                ).toLocaleString()
+                            }}</span
                         >
                     </div>
                     <!-- 應付金額 -->
@@ -1263,7 +1272,11 @@
                             </div>
                             <!-- 贈品活動來源（贈品型活動才顯示） -->
                             <div
-                                v-if="confirmedGift && confirmedEventTitle && confirmedEventDiscountType === 'Gift'"
+                                v-if="
+                                    confirmedGift &&
+                                    confirmedEventTitle &&
+                                    confirmedEventDiscountType === 'Gift'
+                                "
                                 class="sp-gift-event-note font-label"
                             >
                                 {{ confirmedEventTitle }}：{{ confirmedEventDesc }}
@@ -1279,19 +1292,30 @@
                                 class="sp-meta-row-3"
                             >
                                 <span class="font-label sp-meta-label">活動</span>
-                                <span class="font-label sp-meta-val-mid">{{ confirmedEventTitle }}</span>
-                                <span class="font-label sp-meta-discount">折抵 NT$ {{ confirmedAutoEventDiscount.toLocaleString() }}</span>
+                                <span class="font-label sp-meta-val-mid">{{
+                                    confirmedEventTitle
+                                }}</span>
+                                <span class="font-label sp-meta-discount"
+                                    >折抵 NT$
+                                    {{ confirmedAutoEventDiscount.toLocaleString() }}</span
+                                >
                             </div>
                             <!-- 優惠券 -->
                             <div v-if="confirmedCouponCode" class="sp-meta-row-3">
                                 <span class="font-label sp-meta-label">優惠券</span>
-                                <span class="font-label sp-meta-val-mid">{{ confirmedCouponCode }}</span>
-                                <span class="font-label sp-meta-discount">折抵 NT$ {{ confirmedCouponDiscount.toLocaleString() }}</span>
+                                <span class="font-label sp-meta-val-mid">{{
+                                    confirmedCouponCode
+                                }}</span>
+                                <span class="font-label sp-meta-discount"
+                                    >折抵 NT$ {{ confirmedCouponDiscount.toLocaleString() }}</span
+                                >
                             </div>
                             <!-- 合計（原價） -->
                             <div class="sp-meta-row">
                                 <span class="font-label sp-meta-label">合計</span>
-                                <span class="font-label sp-meta-val">NT$ {{ confirmedSubtotal.toLocaleString() }}</span>
+                                <span class="font-label sp-meta-val"
+                                    >NT$ {{ confirmedSubtotal.toLocaleString() }}</span
+                                >
                             </div>
                             <!-- 折扣（有折扣才顯示） -->
                             <div
@@ -1300,7 +1324,12 @@
                             >
                                 <span class="font-label sp-meta-label">折扣</span>
                                 <span class="font-label sp-meta-val" style="color: #7ec87e"
-                                    >－ NT$ {{ (confirmedAutoEventDiscount + confirmedCouponDiscount).toLocaleString() }}</span
+                                    >－ NT$
+                                    {{
+                                        (
+                                            confirmedAutoEventDiscount + confirmedCouponDiscount
+                                        ).toLocaleString()
+                                    }}</span
                                 >
                             </div>
                         </div>
@@ -1308,8 +1337,12 @@
                         <!-- 金額總計（突出顯示） -->
                         <div class="feather-divider" style="margin: 0.75rem 0 0.65rem"></div>
                         <div class="sp-meta-row">
-                            <span class="font-label sp-meta-label" style="font-size: 1rem">金額總計</span>
-                            <span class="font-label sp-meta-gold">NT$ {{ confirmedTotal.toLocaleString() }}</span>
+                            <span class="font-label sp-meta-label" style="font-size: 1rem"
+                                >金額總計</span
+                            >
+                            <span class="font-label sp-meta-gold"
+                                >NT$ {{ confirmedTotal.toLocaleString() }}</span
+                            >
                         </div>
 
                         <!-- 備註（金額總計下方） -->
@@ -1603,12 +1636,12 @@ const confirmedNote = ref('')
 const confirmedGift = ref(null)
 const confirmedEventTitle = ref('')
 const confirmedEventDesc = ref('')
-const confirmedEventDiscountType = ref('')   // 'FixedAmount' | 'Percent' | 'Gift' | ''
+const confirmedEventDiscountType = ref('') // 'FixedAmount' | 'Percent' | 'Gift' | ''
 const confirmedAutoEventDiscount = ref(0)
 const confirmedCouponCode = ref('')
 const confirmedCouponDiscount = ref(0)
 const confirmedCouponMsg = ref('')
-const confirmedSubtotal = ref(0)             // 餐點原價合計（未含折扣）
+const confirmedSubtotal = ref(0) // 餐點原價合計（未含折扣）
 const orderProgress = ref(1) // 動態進度條：1=接收 2=製作中 3=完成
 
 // ── Modal 狀態 ───────────────────────────────────────
@@ -2418,6 +2451,10 @@ onMounted(async () => {
     } finally {
         loading.value = false
     }
+
+    // 頁面載入時若購物車（Pinia 持久化）已有品項，主動觸發一次活動計算
+    // watch(total) 只在值「改變」時才跑，初始值不觸發，故需在此補呼叫
+    if (total.value > 0) fetchActiveEvents()
 })
 </script>
 

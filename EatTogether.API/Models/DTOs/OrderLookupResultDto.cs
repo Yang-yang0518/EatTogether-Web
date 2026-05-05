@@ -7,6 +7,8 @@ namespace EatTogether.Models.DTOs
         public string CustomerName  { get; set; } = "";
         public string CustomerPhone { get; set; } = "";
         public string PickupTime    { get; set; } = "";
+        /// <summary>0=待處理 1=已結帳</summary>
+        public int    OrderStatus   { get; set; }
         public int    Subtotal      { get; set; }   // 餐點原價合計（折扣前）
         public int    DiscountAmount{ get; set; }   // 折扣總額（活動 + 優惠券）
         public int    TotalAmount   { get; set; }   // 實付金額
