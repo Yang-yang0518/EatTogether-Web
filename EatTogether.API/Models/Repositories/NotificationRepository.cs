@@ -52,5 +52,10 @@ namespace EatTogether.API.Models.Repositories
 			await _context.SaveChangesAsync();
 		}
 
+		public async Task CreateAsync(UserNotification notification)
+		{
+			await _context.UserNotifications.AddAsync(notification);
+			await _context.SaveChangesAsync();
+		}
 	}
 }
