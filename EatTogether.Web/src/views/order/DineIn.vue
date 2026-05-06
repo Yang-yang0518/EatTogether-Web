@@ -1994,6 +1994,7 @@ async function submitOrder() {
             isAddOrder: false,
             payMethod: 'Cash',
             note: store.specialRequest || null,
+            memberId: currentMemberId.value,
             couponId: couponId.value,
             discountAmount: couponOk.value ? couponDiscount.value : 0,
             items: (() => {

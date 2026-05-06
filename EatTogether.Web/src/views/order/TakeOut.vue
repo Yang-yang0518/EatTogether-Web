@@ -1467,17 +1467,29 @@
                         <p class="font-label cew-body">
                             使用此優惠券後，需要再消費
                             <strong class="cew-highlight">
-                                NT$ {{ (bestAutoEvent
-                                    ? bestAutoEvent.minSpend - (total - (pendingCouponData?.discount ?? 0))
-                                    : 0).toLocaleString() }}
+                                NT$
+                                {{
+                                    (bestAutoEvent
+                                        ? bestAutoEvent.minSpend -
+                                          (total - (pendingCouponData?.discount ?? 0))
+                                        : 0
+                                    ).toLocaleString()
+                                }}
                             </strong>
-                            才可享「<strong class="cew-highlight">{{ bestAutoEvent?.title }}</strong>」
-                            活動優惠（{{ bestAutoEvent?.discountDescription }}）。
+                            才可享「<strong class="cew-highlight">{{ bestAutoEvent?.title }}</strong
+                            >」 活動優惠（{{ bestAutoEvent?.discountDescription }}）。
                         </p>
                         <p class="font-label cew-sub">確定要使用優惠券嗎？</p>
                         <div class="cew-btns">
-                            <button class="cew-btn-cancel font-label" @click="cancelCouponWarn">取消</button>
-                            <button class="cew-btn-confirm font-label" @click="confirmCouponDespiteEvent">確定使用</button>
+                            <button class="cew-btn-cancel font-label" @click="cancelCouponWarn">
+                                取消
+                            </button>
+                            <button
+                                class="cew-btn-confirm font-label"
+                                @click="confirmCouponDespiteEvent"
+                            >
+                                確定使用
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1606,6 +1618,7 @@ const cartOpen = ref(false)
 
 // ── 會員狀態（從全域 authStore）─────────────────────
 const isLoggedIn = computed(() => authStore.isLoggedIn)
+const currentMemberId = computed(() => authStore.member?.id ?? null)
 
 // ── 菜單 ─────────────────────────────────────────────
 const products = ref([])
@@ -2109,12 +2122,15 @@ async function applyCoupon() {
         if (data.isValid) {
             const discount = data.discount ?? 0
             // 已套用活動且使用優惠券後金額低於活動門檻 → 先警告
-            if (isLoggedIn.value && bestAutoEvent.value
-                && total.value - discount < bestAutoEvent.value.minSpend) {
+            if (
+                isLoggedIn.value &&
+                bestAutoEvent.value &&
+                total.value - discount < bestAutoEvent.value.minSpend
+            ) {
                 pendingCouponData.value = {
                     discount,
                     couponId: data.couponId,
-                    message: data.message || `折抵 NT$ ${discount}`
+                    message: data.message || `折抵 NT$ ${discount}`,
                 }
                 couponEventWarnModal.value = true
             } else {
@@ -2352,6 +2368,7 @@ async function submitOrder() {
             pickupTime: pickupTime.value,
             customerName: customerName.value.trim(),
             customerPhone: customerPhone.value.trim(),
+            memberId: currentMemberId.value,
             couponId: couponId.value,
             discountAmount: (couponOk.value ? couponDiscount.value : 0) + autoEventDiscount.value,
             items: itemsPayload,
@@ -2685,7 +2702,9 @@ onMounted(async () => {
     color: rgba(208, 197, 181, 0.6);
     font-size: 0.9rem;
     cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
+    transition:
+        border-color 0.2s,
+        color 0.2s;
 }
 .cew-btn-cancel:hover {
     border-color: rgba(208, 197, 181, 0.4);
@@ -2703,11 +2722,17 @@ onMounted(async () => {
     cursor: pointer;
     transition: opacity 0.2s;
 }
-.cew-btn-confirm:hover { opacity: 0.88; }
+.cew-btn-confirm:hover {
+    opacity: 0.88;
+}
 .cew-fade-enter-active,
-.cew-fade-leave-active { transition: opacity 0.2s; }
+.cew-fade-leave-active {
+    transition: opacity 0.2s;
+}
 .cew-fade-enter-from,
-.cew-fade-leave-to { opacity: 0; }
+.cew-fade-leave-to {
+    opacity: 0;
+}
 
 .simple-toast {
     position: fixed;
