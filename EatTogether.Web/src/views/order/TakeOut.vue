@@ -1457,6 +1457,33 @@
 
         <!-- 成功 Modal 已移除，改為 step 4 整頁呈現 -->
 
+        <!-- 優惠券 × 活動衝突警告 Modal -->
+        <Teleport to="body">
+            <Transition name="cew-fade">
+                <div v-if="couponEventWarnModal" class="cew-overlay" @click.self="cancelCouponWarn">
+                    <div class="cew-box">
+                        <div class="cew-icon">⚠️</div>
+                        <p class="font-headline cew-title">注意</p>
+                        <p class="font-label cew-body">
+                            使用此優惠券後，需要再消費
+                            <strong class="cew-highlight">
+                                NT$ {{ (bestAutoEvent
+                                    ? bestAutoEvent.minSpend - (total - (pendingCouponData?.discount ?? 0))
+                                    : 0).toLocaleString() }}
+                            </strong>
+                            才可享「<strong class="cew-highlight">{{ bestAutoEvent?.title }}</strong>」
+                            活動優惠（{{ bestAutoEvent?.discountDescription }}）。
+                        </p>
+                        <p class="font-label cew-sub">確定要使用優惠券嗎？</p>
+                        <div class="cew-btns">
+                            <button class="cew-btn-cancel font-label" @click="cancelCouponWarn">取消</button>
+                            <button class="cew-btn-confirm font-label" @click="confirmCouponDespiteEvent">確定使用</button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
         <!-- 簡易 Toast -->
         <Teleport to="body">
             <div
@@ -1659,6 +1686,10 @@ const couponMsg = ref('')
 const couponOk = ref(false)
 const couponId = ref(null)
 const couponDiscount = ref(0)
+
+// 優惠券 × 活動衝突警告 Modal
+const couponEventWarnModal = ref(false)
+const pendingCouponData = ref(null) // { discount, couponId, message }
 
 // 已領優惠券下拉選單
 const myCoupons = ref([])
@@ -2076,16 +2107,46 @@ async function applyCoupon() {
         })
         const data = await res.json()
         if (data.isValid) {
-            couponMsg.value = data.message || `折抵 NT$ ${data.discount}`
-            couponOk.value = true
-            couponId.value = data.couponId
-            couponDiscount.value = data.discount ?? 0
+            const discount = data.discount ?? 0
+            // 已套用活動且使用優惠券後金額低於活動門檻 → 先警告
+            if (isLoggedIn.value && bestAutoEvent.value
+                && total.value - discount < bestAutoEvent.value.minSpend) {
+                pendingCouponData.value = {
+                    discount,
+                    couponId: data.couponId,
+                    message: data.message || `折抵 NT$ ${discount}`
+                }
+                couponEventWarnModal.value = true
+            } else {
+                couponMsg.value = data.message || `折抵 NT$ ${discount}`
+                couponOk.value = true
+                couponId.value = data.couponId
+                couponDiscount.value = discount
+            }
         } else {
             couponMsg.value = data.message || '優惠券無效或不符條件'
         }
     } catch {
         couponMsg.value = '驗證失敗，請稍後再試'
     }
+}
+
+// 使用者確認「仍要用優惠券」
+function confirmCouponDespiteEvent() {
+    if (!pendingCouponData.value) return
+    const { discount, couponId: cid, message } = pendingCouponData.value
+    couponMsg.value = message
+    couponOk.value = true
+    couponId.value = cid
+    couponDiscount.value = discount
+    pendingCouponData.value = null
+    couponEventWarnModal.value = false
+}
+
+// 使用者取消（不套用優惠券）
+function cancelCouponWarn() {
+    pendingCouponData.value = null
+    couponEventWarnModal.value = false
 }
 
 // ── 步驟流程 ─────────────────────────────────────────
@@ -2561,6 +2622,93 @@ onMounted(async () => {
 }
 
 /* ── simple toast ── */
+/* ── 優惠券 × 活動衝突警告 Modal ── */
+.cew-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9500;
+}
+.cew-box {
+    background: #2a1a12;
+    border: 1px solid rgba(227, 199, 107, 0.3);
+    border-radius: 0.75rem;
+    padding: 2rem 1.75rem 1.5rem;
+    max-width: 360px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.cew-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+.cew-title {
+    color: #e3c76b;
+    font-size: 1.15rem;
+    margin: 0;
+}
+.cew-body {
+    color: rgba(208, 197, 181, 0.85);
+    font-size: 0.9rem;
+    line-height: 1.65;
+    text-align: center;
+    margin: 0;
+}
+.cew-highlight {
+    color: #e3c76b;
+    font-weight: 700;
+}
+.cew-sub {
+    color: rgba(208, 197, 181, 0.55);
+    font-size: 0.82rem;
+    margin: 0;
+}
+.cew-btns {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0.25rem;
+}
+.cew-btn-cancel {
+    flex: 1;
+    padding: 0.65rem;
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    border-radius: 0.35rem;
+    background: transparent;
+    color: rgba(208, 197, 181, 0.6);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+.cew-btn-cancel:hover {
+    border-color: rgba(208, 197, 181, 0.4);
+    color: rgba(208, 197, 181, 0.9);
+}
+.cew-btn-confirm {
+    flex: 1;
+    padding: 0.65rem;
+    border: none;
+    border-radius: 0.35rem;
+    background: linear-gradient(135deg, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.cew-btn-confirm:hover { opacity: 0.88; }
+.cew-fade-enter-active,
+.cew-fade-leave-active { transition: opacity 0.2s; }
+.cew-fade-enter-from,
+.cew-fade-leave-to { opacity: 0; }
+
 .simple-toast {
     position: fixed;
     bottom: 4.5rem;
