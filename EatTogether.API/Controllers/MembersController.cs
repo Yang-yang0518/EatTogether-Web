@@ -77,6 +77,11 @@ namespace EatTogether.API.Controllers
 						Message = "生日不可為未來日期",
 						ErrorCode = "invalid_birth_date"
 					}),
+					"birth_date_locked" => BadRequest(new ErrorViewModel
+					{
+						Message = "生日設定後無法修改",
+						ErrorCode = "birth_date_locked"
+					}),
 					"update_failed" => BadRequest(new ErrorViewModel
 					{
 						Message = "更新失敗",

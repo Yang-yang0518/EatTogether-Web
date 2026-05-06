@@ -119,6 +119,10 @@ namespace EatTogether.API.Models.Services
 			if (dto.BirthDate.HasValue && dto.BirthDate.Value > DateOnly.FromDateTime(DateTime.Today))
 				return Result.Fail("invalid_birth_date");
 
+			// 生日已設定過，不允許修改（含清空）
+			if (member.BirthDate.HasValue && dto.BirthDate != member.BirthDate)
+				return Result.Fail("birth_date_locked");
+
 			bool success = await _memberRepo.UpdateProfileAsync(memberId, dto);
 			if (!success)
 				return Result.Fail("update_failed");

@@ -11,6 +11,7 @@ namespace EatTogether.API.Models.DTOs
 		/// 刪除確認 token
 		/// </summary>
 		[Required(ErrorMessage = "token_required")]
+		[StringLength(32, MinimumLength = 32, ErrorMessage = "token_invalid")]
 		public string Token { get; set; } = string.Empty;
 
 		/// <summary>
