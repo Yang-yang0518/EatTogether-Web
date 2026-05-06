@@ -184,7 +184,6 @@ namespace EatTogether.API.Models.Infra
 					body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
 					.container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
 					.warning {{ background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0; }}
-					.button {{ display: inline-block; padding: 12px 24px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
 					.footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }}
 				</style>
 			</head>
@@ -193,8 +192,8 @@ namespace EatTogether.API.Models.Infra
 					<h2>確認刪除帳號</h2>
 					<p>親愛的 {memberName}：</p>
 					<p>您申請刪除 EatTogether 帳號。如果這是您的操作，請點擊以下按鈕確認：</p>
-					<a href=""{confirmUrl}"" class=""button"">確認刪除帳號</a>
-					<p>或複製以下連結到瀏覽器：<br>{confirmUrl}</p>
+					<a href=""{confirmUrl}"" style=""display:inline-block;padding:12px 24px;background:#c0392b;color:#fff;
+              text-decoration:none;border-radius:4px;margin:16px 0;"">確認刪除帳號</a>
 					<div class=""warning"">
 						<strong>⚠️ 重要警告</strong>
 						<p>此連結將在 <strong>15 分鐘</strong>後失效</p>

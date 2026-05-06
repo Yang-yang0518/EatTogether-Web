@@ -416,14 +416,26 @@ onUnmounted(() => {
             <p v-if="emailChangeSent" class="eat-body-muted mt-2 mb-0">
                 驗證信已寄出，請至新信箱點擊連結完成變更
             </p>
-            <Button
-                variant="secondary"
-                class="btn-eat-sm mt-3"
-                data-bs-toggle="modal"
-                data-bs-target="#changeEmailModal"
+            <span
+                :title="
+                    authStore.member.hashedPasswordStatus === 'EXTERNAL_LOGIN_NO_PASSWORD'
+                        ? '第三方登入帳號的 Email 無法修改'
+                        : undefined
+                "
+                style="display: inline-block"
             >
-                修改 Email
-            </Button>
+                <Button
+                    variant="secondary"
+                    class="btn-eat-sm mt-3"
+                    :disabled="
+                        authStore.member.hashedPasswordStatus === 'EXTERNAL_LOGIN_NO_PASSWORD'
+                    "
+                    data-bs-toggle="modal"
+                    data-bs-target="#changeEmailModal"
+                >
+                    修改 Email
+                </Button>
+            </span>
         </div>
 
         <!-- ── 登入方式 ── -->
@@ -502,17 +514,21 @@ onUnmounted(() => {
                     </div>
                     <div>
                         <template v-if="provider.linked">
-                            <Button
-                                variant="secondary"
-                                class="btn-eat-sm"
-                                :disabled="!provider.canUnlink"
-                                :loading="provider.isUnlinking"
-                                :title="!provider.canUnlink ? provider.canUnlinkHint : ''"
-                                :aria-disabled="!provider.canUnlink ? 'true' : undefined"
-                                @click="provider.onUnlink"
+                            <span
+                                :title="!provider.canUnlink ? provider.canUnlinkHint : undefined"
+                                style="display: inline-block"
                             >
-                                取消連結
-                            </Button>
+                                <Button
+                                    variant="secondary"
+                                    class="btn-eat-sm"
+                                    :disabled="!provider.canUnlink"
+                                    :loading="provider.isUnlinking"
+                                    :aria-disabled="!provider.canUnlink ? 'true' : undefined"
+                                    @click="provider.onUnlink"
+                                >
+                                    取消連結
+                                </Button>
+                            </span>
                         </template>
                         <template v-else>
                             <Button variant="secondary" class="btn-eat-sm" @click="provider.onLink">

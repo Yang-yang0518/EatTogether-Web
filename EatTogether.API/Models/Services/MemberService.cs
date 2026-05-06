@@ -16,9 +16,10 @@ namespace EatTogether.API.Models.Services
 		Task<Result> CreateAccountAsync(int memberId, CreateAccountDto dto);
 		Task<Result> UnlinkGoogleAsync(int memberId);
 
-		// ✅ 修改:刪除帳號改為兩步驟
+		// 刪除帳號為兩步驟
 		Task<Result> RequestDeleteAccountAsync(int memberId, DeleteAccountDto dto);  // 第一步:申請刪除
 		Task<Result> ConfirmDeleteAccountAsync(ConfirmDeleteAccountDto dto);        // 第二步:確認刪除
+		Task<Result> ValidateDeleteTokenAsync(string token);
 	}
 
 	public class MemberService : IMemberService
@@ -210,6 +211,10 @@ namespace EatTogether.API.Models.Services
 			if (!validation.IsSuccess)
 				return validation;
 
+			// 純 Google 帳號不允許修改 Email（避免下次 Google 登入找不到帳號）
+			if (member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
+				return Result.Fail("cannot_change_email_external_login");
+
 			// 不可與目前 Email 相同
 			if (member.Email.Equals(dto.NewEmail, StringComparison.OrdinalIgnoreCase))
 				return Result.Fail("same_email");
@@ -366,6 +371,19 @@ namespace EatTogether.API.Models.Services
 
 			// 8. 發送刪除完成通知信
 			await _emailService.SendAccountDeletedNoticeAsync(member.Email, member.Name);
+
+			return Result.Success();
+		}
+
+		public async Task<Result> ValidateDeleteTokenAsync(string token)
+		{
+			var confirmToken = await _memberRepo.GetConfirmTokenAsync(token);
+
+			if (confirmToken == null || confirmToken.IsUsed || confirmToken.ExpiresAt <= DateTime.Now)
+				return Result.Fail("invalid_or_expired_token");
+
+			if (confirmToken.NewEmail != "DELETE_ACCOUNT")
+				return Result.Fail("invalid_token_type");
 
 			return Result.Success();
 		}

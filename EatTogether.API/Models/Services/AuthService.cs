@@ -586,9 +586,9 @@ namespace EatTogether.API.Models.Services
 				}
 			}
 
-			// 7. 已軟刪除（ExternalLogin 存在但 Member 後來被刪除的邊緣情境）
+			// 7. 已軟刪除 → 純 Google 帳號無法用帳密恢復，透過重新 OAuth 登入自動恢復
 			if (member.IsDeleted)
-				return Result<MemberViewModel>.Fail("login_failed");
+				await _memberRepo.RestoreAccountAsync(member.Id);
 
 			// 8. 已停權
 			if (member.IsBlacklisted)

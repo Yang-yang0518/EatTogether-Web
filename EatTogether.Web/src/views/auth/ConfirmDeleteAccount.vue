@@ -82,15 +82,25 @@ async function handleSubmit() {
 
 // ── 初始化 ────────────────────────────────────────────────
 onMounted(async () => {
-    // token 不存在直接顯示失效畫面
     if (!token) {
         pageState.value = 'invalid'
         return
     }
 
-    // 嘗試確認登入狀態，用於判斷是否需要密碼欄位
-    // 失敗也沒關係，needsPassword 會走保守策略（預設顯示密碼欄）
     await authStore.checkAuth()
+
+    // 預先驗證 token 是否有效，避免使用者填完密碼才發現連結失效
+    try {
+        const res = await apiFetch(`/members/validate-delete-token?token=${token}`)
+        if (!res.ok) {
+            pageState.value = 'invalid'
+            return
+        }
+    } catch {
+        pageState.value = 'invalid'
+        return
+    }
+
     pageState.value = 'ready'
 })
 </script>
@@ -108,7 +118,9 @@ onMounted(async () => {
             class="card-eat p-5 text-center"
             style="max-width: 420px; width: 100%"
         >
-            <i class="bi bi-x-circle fs-1 mb-3" style="color: var(--eat-error)"></i>
+            <div class="icon-eat icon-eat--error mb-3">
+                <i class="bi bi-x-lg"></i>
+            </div>
             <h2 class="eat-h3 fw-bolder fst-normal fs-5 mb-2">連結已失效</h2>
             <p class="eat-body-muted mb-4">此刪除連結已過期或已使用，請重新申請</p>
             <Button variant="secondary" class="btn-eat-sm" @click="router.push('/')">
@@ -119,7 +131,7 @@ onMounted(async () => {
         <!-- 確認刪除表單 -->
         <div
             v-else-if="pageState === 'ready'"
-            class="card-eat p-5"
+            class="card-eat p-5 d-flex flex-column align-items-center"
             style="max-width: 420px; width: 100%"
         >
             <h2 class="eat-h3 fw-bolder fst-normal fs-5 mb-2 text-center">確認刪除帳號</h2>

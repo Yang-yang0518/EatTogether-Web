@@ -65,6 +65,8 @@ async function handleSubmit() {
                 newEmailError.value = '此 Email 已被使用'
             } else if (data?.errorCode === 'same_email') {
                 newEmailError.value = '新 Email 與目前相同'
+            } else if (data?.errorCode === 'cannot_change_email_external_login') {
+                showToast('Google 登入帳號的 Email 無法修改', 'error')
             } else {
                 showToast(data?.message || '申請失敗，請稍後再試', 'error')
             }

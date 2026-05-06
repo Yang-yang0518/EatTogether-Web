@@ -239,6 +239,11 @@ namespace EatTogether.API.Controllers
 						Message = "此 Email 已被其他帳號使用",
 						ErrorCode = "email_taken"
 					}),
+					"cannot_change_email_external_login" => BadRequest(new ErrorViewModel
+					{
+						Message = "第三方登入帳號的 Email 無法修改",
+						ErrorCode = "cannot_change_email_external_login"
+					}),
 					_ => BadRequest(new ErrorViewModel { Message = "申請失敗，請稍後再試" })
 				};
 			}
@@ -263,7 +268,6 @@ namespace EatTogether.API.Controllers
 			{
 				return result.ErrorMessage switch
 				{
-					// ✅ 來自 ValidateMemberStatusStrict
 					"member_not_found" => NotFound(new ErrorViewModel
 					{
 						Message = "找不到會員",
@@ -279,7 +283,6 @@ namespace EatTogether.API.Controllers
 						Message = "請先驗證您的信箱",
 						ErrorCode = "email_not_confirmed"
 					}),
-					// ✅ 業務邏輯錯誤
 					"already_has_account" => BadRequest(new ErrorViewModel
 					{
 						Message = "此帳號已設有一般帳號密碼",
@@ -449,6 +452,31 @@ namespace EatTogether.API.Controllers
 			{
 				Message = "帳號已成功刪除，感謝您使用我們的服務"
 			});
+		}
+
+		// GET /api/members/validate-delete-token?token=xxx
+		[HttpGet("validate-delete-token")]
+		[AllowAnonymous]
+		[EnableRateLimiting("AuthPolicy")]
+		public async Task<IActionResult> ValidateDeleteToken([FromQuery] string token)
+		{
+			if (string.IsNullOrWhiteSpace(token))
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "連結無效或已過期",
+					ErrorCode = "invalid_or_expired_token"
+				});
+
+			var result = await _memberService.ValidateDeleteTokenAsync(token);
+
+			if (!result.IsSuccess)
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "連結無效或已過期",
+					ErrorCode = "invalid_or_expired_token"
+				});
+
+			return Ok(new SuccessViewModel { Message = "token 有效" });
 		}
 	}
 }

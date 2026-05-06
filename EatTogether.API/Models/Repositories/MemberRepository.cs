@@ -224,7 +224,6 @@ namespace EatTogether.API.Models.Repositories
 			if (member == null || token == null) return;
 
 			member.Email = newEmail;
-			member.IsConfirmed = false;
 			token.IsUsed = true;
 			await _context.SaveChangesAsync();
 		}
