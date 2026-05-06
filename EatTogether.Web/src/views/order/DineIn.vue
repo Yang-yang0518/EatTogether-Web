@@ -3559,7 +3559,7 @@ html:has(.gate-wrap) footer {
     border-color: #e3c76b;
     background: rgba(227, 199, 107, 0.06);
 }
-.submit-btn-in {
+.submit-btn {
     background: linear-gradient(to right, #e3c76b, #c6ab53);
     color: #3b2f00;
     display: block;
