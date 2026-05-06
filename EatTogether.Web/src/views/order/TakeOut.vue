@@ -1398,6 +1398,10 @@
                                 <span class="font-label sp-meta-label">取餐方式</span>
                                 <span class="font-label sp-meta-val">臨櫃自取</span>
                             </div>
+                            <div class="sp-meta-row">
+                                <span class="font-label sp-meta-label">餐具</span>
+                                <span class="font-label sp-meta-val">{{ confirmedNeedUtensils ? '需要' : '不需要' }}</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1665,11 +1669,20 @@ watch(
     },
     { immediate: true }
 )
+// 登入後自動帶入會員電話  ← 新增
+watch(
+    () => authStore.member?.phone, // ← key 名稱依你 authStore 實際欄位調整
+    (phone) => {
+        if (phone) customerPhone.value = phone
+    },
+    { immediate: true }
+)
 
 // ── 訂單完成後儲存（成功頁顯示用）─────────────────
 const confirmedPickupTime = ref('')
 const confirmedName = ref('')
 const confirmedPhone = ref('')
+const confirmedNeedUtensils = ref(false)
 const confirmedTotal = ref(0)
 const confirmedItems = ref([]) // 快照購物車（store.clearOrder 前存入）
 const confirmedNote = ref('')
@@ -2364,10 +2377,15 @@ async function submitOrder() {
             peopleNum: 1,
             isAddOrder: false,
             payMethod: 'Cash',
-            note: store.specialRequest || null,
-            pickupTime: pickupTime.value,
-            customerName: customerName.value.trim(),
-            customerPhone: customerPhone.value.trim(),
+            note: [
+                `取餐時間：${pickupTime.value}`,
+                `取餐人：${customerName.value.trim()}`,
+                `電話：${customerPhone.value.trim()}`,
+                `餐具：${needUtensils.value ? '需要' : '不需要'}`,
+                store.specialRequest ? `備註：${store.specialRequest}` : '',
+            ]
+                .filter(Boolean)
+                .join('\n'),
             memberId: currentMemberId.value,
             couponId: couponId.value,
             discountAmount: (couponOk.value ? couponDiscount.value : 0) + autoEventDiscount.value,
@@ -2385,6 +2403,7 @@ async function submitOrder() {
         confirmedPickupTime.value = pickupTime.value
         confirmedName.value = customerName.value
         confirmedPhone.value = customerPhone.value
+        confirmedNeedUtensils.value = needUtensils.value
         confirmedTotal.value = finalTotal.value
         confirmedNote.value = store.specialRequest || ''
         // 快照購物車（store.clearOrder 前存入，否則資料消失）
@@ -2440,8 +2459,10 @@ async function submitOrder() {
 function onSuccessClose() {
     step.value = 1
     pickupTime.value = ''
-    customerName.value = ''
-    customerPhone.value = ''
+    // 優先從會員資料還原，未登入才清空（避免下次點餐需重填）
+    customerName.value = authStore.member?.name || ''
+    customerPhone.value = authStore.member?.phone || ''
+    needUtensils.value = false
     confirmedItems.value = []
     confirmedGift.value = null
     confirmedEventTitle.value = ''
@@ -2452,6 +2473,7 @@ function onSuccessClose() {
     confirmedCouponDiscount.value = 0
     confirmedCouponMsg.value = ''
     confirmedSubtotal.value = 0
+    confirmedNeedUtensils.value = false
     orderProgress.value = 1
     window.scrollTo({ top: 0 })
 }
