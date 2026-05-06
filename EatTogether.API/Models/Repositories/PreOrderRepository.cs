@@ -7,6 +7,8 @@ namespace EatTogether.Models.Repositories
     {
         // Create
         Task<List<PreOrder>> GetByStatusAsync(int doneOrCancel); // string → int
+        /// <summary>前台訂單查詢用：當日外帶未完成 + 結帳後 30 分鐘內已完成</summary>
+        Task<List<PreOrder>> GetTodayTakeoutForLookupAsync();
         Task AddAsync(PreOrder preOrder);
         Task<int> CountTodayAsync(DateTime date);
         Task<List<PreOrder>> GetActiveByTableIdAsync(int tableId);
@@ -43,6 +45,23 @@ namespace EatTogether.Models.Repositories
                      .Include(p => p.Coupon)
                      .Where(p => p.DoneOrCancel == doneOrCancel)
                      .ToListAsync();
+
+        public async Task<List<PreOrder>> GetTodayTakeoutForLookupAsync()
+        {
+            var today    = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+
+            return await _context.PreOrders
+                .Include(p => p.PreOrderDetails)
+                .Include(p => p.Event)
+                .Include(p => p.Coupon)
+                .Include(p => p.Payments)
+                .Where(p => p.OrderAt >= today && p.OrderAt < tomorrow
+                         && !p.InOrOut
+                         && (p.DoneOrCancel == PreOrderStatus.Pending
+                             || p.DoneOrCancel == PreOrderStatus.Done))
+                .ToListAsync();
+        }
         public async Task AddAsync(PreOrder preOrder)
         {
             _context.PreOrders.Add(preOrder);

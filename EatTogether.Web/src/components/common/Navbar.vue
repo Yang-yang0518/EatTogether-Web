@@ -188,7 +188,7 @@ const navLinks = [
         label: '享用美味',
         children: [
             { label: '外帶點餐', to: '/takeout' },
-            { label: '訂單查詢', to: '/order-lookup' },
+            { label: '當日訂單查詢', to: '/order-lookup' },
         ],
     },
 ]

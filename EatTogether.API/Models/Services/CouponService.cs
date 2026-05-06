@@ -1,5 +1,6 @@
 using EatTogether.API.Models.Infra;
 using EatTogether.API.Models.Repositories;
+using EatTogether.API.Models.Services;
 using EatTogether.Models.DTOs;
 using EatTogether.Models.Repositories;
 
@@ -10,16 +11,19 @@ namespace EatTogether.Models.Services
         private readonly ICouponRepository       _couponRepo;
         private readonly IMemberCouponRepository _memberCouponRepo;
         private readonly IMemberRepository       _memberRepo;
+		private readonly INotificationService    _notifyService;
 
-        public CouponService(
+		public CouponService(
             ICouponRepository       couponRepo,
             IMemberCouponRepository memberCouponRepo,
-            IMemberRepository       memberRepo)
+            IMemberRepository       memberRepo,
+            INotificationService    notifyService)
         {
             _couponRepo       = couponRepo;
             _memberCouponRepo = memberCouponRepo;
             _memberRepo       = memberRepo;
-        }
+			_notifyService    = notifyService;
+		}
 
         // ─── 取得可領取優惠券列表（公開，含 IsClaimed 標記）─────────────
         public async Task<List<CouponDto>> GetAvailableCouponsAsync(int? memberId)
@@ -75,7 +79,19 @@ namespace EatTogether.Models.Services
             await _memberCouponRepo.AddAsync(memberId, couponId);
             await _couponRepo.IncrementReceivedCountAsync(couponId);
 
-            return Result.Success();
+            // 建立領取通知
+			await _notifyService.SendToMemberAsync(
+	            memberId: memberId,
+	            type: "COUPON_RECEIVED",
+	            referenceType: "Coupon",
+	            referenceId: couponId,
+	            title: $"優惠券已領取｜{coupon.Name}",
+	            message: coupon.EndDate.HasValue
+					            ? $"有效期限至 {coupon.EndDate.Value:MM/dd}，結帳時即可使用"
+					            : "無使用期限，結帳時即可使用"
+            );
+
+			return Result.Success();
         }
 
         // ─── 以折扣碼領取（會員輸入碼直接兌換）─────────────────────────

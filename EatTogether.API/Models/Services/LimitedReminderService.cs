@@ -44,7 +44,7 @@ namespace EatTogether.API.Models.Services
                     var endDate = n.Dish.EndDate ?? tomorrow;
                     await _email.SendLimitedReminderAsync(
                         n.Member.Email, n.Member.Name, n.Dish.DishName, endDate,
-                        n.Dish.ImageUrl, n.Dish.Description, n.Dish.Price);
+                        n.Dish.Description, n.Dish.Price);
 
                     _logger.LogInformation(
                         "限定餐點提醒已寄出：MemberId={mid}, DishId={did}",

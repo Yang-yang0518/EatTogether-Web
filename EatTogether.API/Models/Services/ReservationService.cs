@@ -1,8 +1,11 @@
+using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
 using EatTogether.API.Models.Repositories;
+using EatTogether.API.Models.Services;
 using EatTogether.Models.DTOs;
 using EatTogether.Models.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Ocsp;
 
 namespace EatTogether.Models.Services
 {
@@ -13,9 +16,10 @@ namespace EatTogether.Models.Services
         private readonly IMemberRepository      _memberRepo;
         private readonly IEmailService          _emailService;
         private readonly IConfiguration         _config;
+		private readonly INotificationService _notifyService;
 
-        // 營業時段常數
-        private static readonly TimeSpan BusinessStart = new(11, 0, 0);
+		// 營業時段常數
+		private static readonly TimeSpan BusinessStart = new(11, 0, 0);
         private static readonly TimeSpan BusinessEnd   = new(20, 0, 0);
         private static readonly int[]    ValidMinutes  = { 0, 15, 30, 45 };
         private const double CapacityUsageLimit = 0.7;
@@ -27,14 +31,16 @@ namespace EatTogether.Models.Services
             ITableRepository       tableRepo,
             IMemberRepository      memberRepo,
             IEmailService          emailService,
-            IConfiguration         config)
+            IConfiguration         config,
+			INotificationService notifyService)
         {
             _reservationRepo = reservationRepo;
             _tableRepo       = tableRepo;
             _memberRepo      = memberRepo;
             _emailService    = emailService;
             _config          = config;
-        }
+			_notifyService = notifyService;
+		}
 
         // ─── 建立訂位（七道防線）──────────────────────────────────────
         public async Task<Result<string>> CreateAsync(ReservationCreateDto dto, int? memberId)
@@ -101,8 +107,8 @@ namespace EatTogether.Models.Services
             var maxSeq      = await _reservationRepo.GetMaxSeqOfDayAsync(resDate);
             var bookingNumber = $"R{resDate:yyMMdd}{(maxSeq + 1):D3}";
 
-            // 建立訂位
-            await _reservationRepo.CreateAsync(dto, bookingNumber, memberId);
+			// 建立訂位 (並取得該筆的訂位Id)
+			var reservationId = await _reservationRepo.CreateAsync(dto, bookingNumber, memberId);
 
             // 寄送確認信（非同步，不阻塞主流程）
             if (!string.IsNullOrWhiteSpace(dto.Email))
@@ -119,7 +125,20 @@ namespace EatTogether.Models.Services
                 });
             }
 
-            return Result<string>.Success(bookingNumber);
+			// 建立會員訂位確認通知
+			if (memberId.HasValue)
+            {
+				await _notifyService.SendToMemberAsync(
+		            memberId: memberId.Value,
+		            type: "RESERVATION_CONFIRM",
+		            referenceType: "Reservation",
+		            referenceId: reservationId,
+					title: $"訂位確認｜{resDate:M/d} {resDate:HH:mm} {total} 位，我們已為您保留座位",
+	                message: $"訂位單號：{bookingNumber}"
+				);
+			}
+
+			return Result<string>.Success(bookingNumber);
         }
 
         // ─── 取消訂位 ─────────────────────────────────────────────────
@@ -163,7 +182,21 @@ namespace EatTogether.Models.Services
                 });
             }
 
-            return Result.Success();
+			// 建立會員訂位取消通知
+			if (detail.MemberId.HasValue)
+			{
+				await _notifyService.SendToMemberAsync(
+					memberId: detail.MemberId.Value,
+					type: "RESERVATION_CANCEL",
+					referenceType: "Reservation",
+					referenceId: detail.Id,
+					title: $"訂位已取消｜{detail.ReservationDate:M/d} {detail.ReservationDate:HH:mm} {detail.AdultsCount + detail.ChildrenCount} 位",
+					message: $"訂位單號：{detail.BookingNumber}"
+				);
+			}
+
+
+			return Result.Success();
         }
 
         // ─── 即時可用性查詢 ────────────────────────────────────────────

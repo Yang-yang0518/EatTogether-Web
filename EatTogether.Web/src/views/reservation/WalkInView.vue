@@ -300,17 +300,26 @@ function updateTime() {
 const tableSlots   = ref([])
 const tableLoading = ref(false)
 
-function toLocalISO(d) {
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
-}
-
 async function fetchTableStatus() {
   tableLoading.value = true
-  const now = updateTime()
+  updateTime()
   try {
-    const res = await apiFetch(`/Reservations/TableAvailability?date=${encodeURIComponent(toLocalISO(now))}`)
-    if (res.ok) tableSlots.value = await res.json()
+    const res = await apiFetch('/Tables')
+    if (res.ok) {
+      const tables = await res.json()
+      // 依座位數分組，計算各類型空桌 / 總桌數
+      const groups = {}
+      for (const t of tables) {
+        const key = `${t.seatCount} 人桌`
+        if (!groups[key]) groups[key] = { tableType: key, total: 0, available: 0 }
+        groups[key].total++
+        if (t.status === 0) groups[key].available++  // 0 = 空桌
+      }
+      // 依座位數排序
+      tableSlots.value = Object.values(groups).sort((a, b) =>
+        parseInt(a.tableType) - parseInt(b.tableType)
+      )
+    }
   } catch { /* 靜默 */ }
   finally { tableLoading.value = false }
 }

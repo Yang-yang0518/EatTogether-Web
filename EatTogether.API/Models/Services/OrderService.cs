@@ -1,5 +1,6 @@
 ﻿using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Repositories;
+using EatTogether.API.Models.Services;
 using EatTogether.Models.DTOs;
 using EatTogether.Models.Infra;
 using EatTogether.Models.Repositories;
@@ -87,8 +88,9 @@ namespace EatTogether.Models.Services
         private readonly IMemberCouponRepository _memberCouponRepo;
         private readonly IUserRepository _userRepo;
         private readonly IMemberFavoriteRepository _memberFavoriteRepo;
+		private readonly INotificationService _notifyService;
 
-        public OrderService(
+		public OrderService(
             IPreOrderRepository preOrderRepo,
             ITableRepository tableRepo,
             IProductRepository productRepo,
@@ -98,7 +100,8 @@ namespace EatTogether.Models.Services
             IMemberRepository memberRepo,
             IMemberCouponRepository memberCouponRepo,
             IUserRepository userRepo,
-            IMemberFavoriteRepository memberFavoriteRepo)
+            IMemberFavoriteRepository memberFavoriteRepo,
+			INotificationService notifyService)
         {
             _preOrderRepo = preOrderRepo;
             _tableRepo = tableRepo;
@@ -110,7 +113,8 @@ namespace EatTogether.Models.Services
             _memberCouponRepo = memberCouponRepo;
             _userRepo = userRepo;
             _memberFavoriteRepo = memberFavoriteRepo;
-        }
+			_notifyService = notifyService;
+		}
 
         // ── CreatePreOrder ──────────────────────────────────────────────────
         public async Task<string> CreatePreOrderAsync(CreatePreOrderDto dto)
@@ -274,6 +278,25 @@ namespace EatTogether.Models.Services
 
             if (hasChildren)
                 await _preOrderRepo.SaveChangesAsync();
+
+            // 會員外帶訂單建立通知
+            if (!dto.InOrOut && dto.MemberId.HasValue)
+            {
+                var noteDto = OrderNoteHelper.Parse(preOrder.Note);
+                var pickupTime = string.IsNullOrEmpty(noteDto.PickupTime)
+                    ? "待確認"
+                    : noteDto.PickupTime;
+
+                await _notifyService.SendToMemberAsync(
+                    memberId: dto.MemberId.Value,
+                    type: "TAKEOUT_CREATED",
+                    referenceType: "Order",
+                    referenceId: preOrder.Id,
+					title: $"外帶訂單已成立｜{orderNumber}",
+                    message: $"預計取餐時間：{pickupTime}"
+				);
+            }
+
 
             return orderNumber;
         }
@@ -442,7 +465,25 @@ namespace EatTogether.Models.Services
                 preOrder.CancelledAt = DateTime.Now;
                 await _preOrderRepo.UpdateStatusAsync(preOrderId, PreOrderStatus.Cancel);
             }
-        }
+
+
+			// 會員外帶備餐完成通知：所有品項都完成才發通知
+			if (preOrder != null
+				&& !preOrder.InOrOut                                          // 外帶
+				&& preOrder.MemberId.HasValue                                 // 登入會員
+				&& status == 1                                                // 廚房標記完成
+				&& preOrder.PreOrderDetails.All(d => d.DoneOrCancel == 1))   // 全部完成
+			{
+				await _notifyService.SendToMemberAsync(
+					memberId: preOrder.MemberId.Value,
+					type: "TAKEOUT_READY",
+					referenceType: "Order",
+					referenceId: preOrder.Id,
+					title: $"餐點備妥，請至櫃台取餐｜{preOrder.OrderNumber}",
+                    message: $"請盡快前來取餐，以確保餐點最佳風味"
+				);
+			}
+		}
 
         public async Task<PreOrderListQueryViewModel> GetAllPreOrdersAsync(PreOrderListQueryViewModel query)
         {
@@ -1729,14 +1770,8 @@ namespace EatTogether.Models.Services
         // type: "orderNumber" | "name" | "phone"
         public async Task<List<OrderLookupResultDto>> QueryTodayPendingTakeoutAsync(string type, string q)
         {
-            var today   = DateTime.Today;
-            var pending = await _preOrderRepo.GetByStatusAsync(PreOrderStatus.Pending);
-
-            // 只查當日外帶（InOrOut=false）且有未完成品項的訂單
-            var todayTakeout = pending
-                .Where(p => p.OrderAt.Date == today && !p.InOrOut)
-                .Where(p => p.PreOrderDetails.Any(d => d.DoneOrCancel == 0))
-                .ToList();
+            // 當日外帶：待處理 + 結帳後 30 分鐘內
+            var todayTakeout = await _preOrderRepo.GetTodayTakeoutForLookupAsync();
 
             var results = new List<OrderLookupResultDto>();
             foreach (var p in todayTakeout)
@@ -1813,6 +1848,7 @@ namespace EatTogether.Models.Services
                     CustomerName     = note.CustomerName  ?? "",
                     CustomerPhone    = note.CustomerPhone ?? "",
                     PickupTime       = note.PickupTime    ?? "",
+                    OrderStatus      = p.DoneOrCancel,
                     Subtotal         = p.OriginalAmount,
                     DiscountAmount   = p.DiscountAmount,
                     TotalAmount      = p.TotalAmount,
