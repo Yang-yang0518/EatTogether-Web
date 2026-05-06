@@ -1,4 +1,5 @@
-﻿using EatTogether.API.Models.EfModels;
+﻿using EatTogether.API.Models.DTOs;
+using EatTogether.API.Models.EfModels;
 using EatTogether.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,12 +61,13 @@ namespace EatTogether.API.Models.Repositories
 		Task CreateExternalLoginAsync(MemberExternalLogin login);
 
 		// -----前台個人資料用------------------------------
-		Task UpdateProfileAsync(int memberId, string name, string? phone, DateOnly? birthDate);
+		Task<bool> UpdateProfileAsync(int memberId, UpdateProfileDto dto);
 		Task UpdateAvatarAsync(int memberId, string avatarFileName);
 		Task UpdateAccountAsync(int memberId, string account, string hashedPassword);
 		Task DeleteExternalLoginAsync(int memberId, string provider);
 		Task SoftDeleteMemberAsync(int memberId);
 		Task<bool> IsEmailExistsForOtherAsync(int memberId, string email);
+		Task MarkOldDeleteAccountTokensUsedAsync(int memberId);
 	}
 
 	public class MemberRepository : IMemberRepository
@@ -411,14 +413,16 @@ namespace EatTogether.API.Models.Repositories
 
 		// -----前台個人資料用------------------------------
 
-		public async Task UpdateProfileAsync(int memberId, string name, string? phone, DateOnly? birthDate)
+		public async Task<bool> UpdateProfileAsync(int memberId, UpdateProfileDto dto)
 		{
 			var member = await _context.Members.FindAsync(memberId);
-			if (member == null) return;
-			member.Name = name;
-			member.Phone = phone;
-			member.BirthDate = birthDate;
+			if (member == null) return false;
+
+			member.Name = dto.Name;
+			member.Phone = dto.Phone;
+			member.BirthDate = dto.BirthDate;
 			await _context.SaveChangesAsync();
+			return true;
 		}
 
 		public async Task UpdateAvatarAsync(int memberId, string avatarFileName)
@@ -463,6 +467,26 @@ namespace EatTogether.API.Models.Repositories
 		{
 			return await _context.Members
 				.AnyAsync(m => m.Email == email && m.Id != memberId);
+		}
+
+		/// <summary>
+		/// 申請刪除帳號前呼叫,將同一會員舊的未使用刪除帳號 token 標為已使用,
+		/// 確保同一時間只有最新的連結有效
+		/// </summary>
+		public async Task MarkOldDeleteAccountTokensUsedAsync(int memberId)
+		{
+			var tokens = await _context.MemberConfirmTokens
+				.Where(t => t.MemberId == memberId &&
+							!t.IsUsed &&
+							t.NewEmail == "DELETE_ACCOUNT")
+				.ToListAsync();
+
+			if (tokens.Count == 0) return;
+
+			foreach (var t in tokens)
+				t.IsUsed = true;
+
+			await _context.SaveChangesAsync();
 		}
 	}
 }

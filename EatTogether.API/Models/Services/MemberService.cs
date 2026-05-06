@@ -15,7 +15,11 @@ namespace EatTogether.API.Models.Services
 		Task<Result> RequestEmailChangeAsync(int memberId, RequestEmailChangeDto dto);
 		Task<Result> CreateAccountAsync(int memberId, CreateAccountDto dto);
 		Task<Result> UnlinkGoogleAsync(int memberId);
-		Task<Result> DeleteAccountAsync(int memberId, DeleteAccountDto dto);
+
+		// 刪除帳號為兩步驟
+		Task<Result> RequestDeleteAccountAsync(int memberId, DeleteAccountDto dto);  // 第一步:申請刪除
+		Task<Result> ConfirmDeleteAccountAsync(ConfirmDeleteAccountDto dto);        // 第二步:確認刪除
+		Task<Result> ValidateDeleteTokenAsync(string token);
 	}
 
 	public class MemberService : IMemberService
@@ -40,7 +44,34 @@ namespace EatTogether.API.Models.Services
 			_httpContextAccessor = httpContextAccessor;
 		}
 
-		// GET /api/members/me
+		// 嚴格驗證(需檢查黑名單+信箱驗證)
+		private Result ValidateMemberStatusStrict(Member? member)
+		{
+			if (member == null || member.IsDeleted)
+				return Result.Fail("member_not_found");
+
+			if (member.IsBlacklisted)
+				return Result.Fail("member_blacklisted");
+
+			if (!member.IsConfirmed)
+				return Result.Fail("email_not_confirmed");
+
+			return Result.Success();
+		}
+
+
+		// 寬鬆驗證(只檢查黑名單)
+		private Result ValidateMemberStatus(Member? member)
+		{
+			if (member == null || member.IsDeleted)
+				return Result.Fail("member_not_found");
+
+			if (member.IsBlacklisted)
+				return Result.Fail("member_blacklisted");
+
+			return Result.Success();
+		}
+
 		public async Task<Result<MemberViewModel>> GetMeAsync(int memberId)
 		{
 			var member = await _memberRepo.GetMemberByIdAsync(memberId);
@@ -77,45 +108,53 @@ namespace EatTogether.API.Models.Services
 			});
 		}
 
-		// PUT /api/members/me/profile
 		public async Task<Result> UpdateProfileAsync(int memberId, UpdateProfileDto dto)
 		{
 			var member = await _memberRepo.GetMemberByIdAsync(memberId);
-			if (member == null || member.IsDeleted)
-				return Result.Fail("member_not_found");
+
+			var validation = ValidateMemberStatusStrict(member);
+			if (!validation.IsSuccess)
+				return validation;
 
 			// 生日不可為未來日期
 			if (dto.BirthDate.HasValue && dto.BirthDate.Value > DateOnly.FromDateTime(DateTime.Today))
 				return Result.Fail("invalid_birth_date");
 
-			await _memberRepo.UpdateProfileAsync(memberId, dto.Name, dto.Phone, dto.BirthDate);
+			// 生日已設定過，不允許修改（含清空）
+			if (member.BirthDate.HasValue && dto.BirthDate != member.BirthDate)
+				return Result.Fail("birth_date_locked");
+
+			bool success = await _memberRepo.UpdateProfileAsync(memberId, dto);
+			if (!success)
+				return Result.Fail("update_failed");
+
 			return Result.Success();
 		}
 
-		// POST /api/members/me/avatar
 		public async Task<Result<string>> UploadAvatarAsync(int memberId, IFormFile file)
 		{
-			// 1. 驗證格式（ContentType 正規化為小寫比對）
+			// 1. 查詢會員（確認存在）
+			var member = await _memberRepo.GetMemberByIdAsync(memberId);
+			var validation = ValidateMemberStatusStrict(member);
+			if (!validation.IsSuccess)
+				return Result<string>.Fail(validation.ErrorMessage);
+
+			// 2. 驗證格式（ContentType 正規化為小寫比對）
 			var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
 			if (!allowedTypes.Contains(file.ContentType.ToLower()))
 				return Result<string>.Fail("invalid_format");
 
-			// 2. 驗證大小（2MB）
+			// 3. 驗證大小（2MB）
 			if (file.Length > 2 * 1024 * 1024)
 				return Result<string>.Fail("file_too_large");
 
-			// 3. 取得上傳目錄（優先 StaticFilesRoot，否則使用 WebRootPath）
+			// 4. 取得上傳目錄（優先 StaticFilesRoot，否則使用 WebRootPath）
 			var staticRoot = _config["StaticFilesRoot"];
 			var baseDir = !string.IsNullOrEmpty(staticRoot) && Directory.Exists(staticRoot)
 				? staticRoot
 				: _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
 			var uploadDir = Path.Combine(baseDir, "uploads", "avatars");
 			Directory.CreateDirectory(uploadDir); // 不存在時自動建立
-
-			// 4. 查詢會員（確認存在 + 取得舊檔名）
-			var member = await _memberRepo.GetMemberByIdAsync(memberId);
-			if (member == null || member.IsDeleted)
-				return Result<string>.Fail("member_not_found");
 
 			// 5. 刪除舊檔案（若有）
 			if (!string.IsNullOrEmpty(member.AvatarFileName))
@@ -131,7 +170,7 @@ namespace EatTogether.API.Models.Services
 				"image/jpeg" => ".jpg",
 				"image/png" => ".png",
 				"image/webp" => ".webp",
-				_ => ".jpg",
+				_ => throw new InvalidOperationException($"Unexpected ContentType: {file.ContentType}"),
 			};
 			var newFileName = $"{Guid.NewGuid():N}{ext}";
 			var newFilePath = Path.Combine(uploadDir, newFileName);
@@ -145,12 +184,12 @@ namespace EatTogether.API.Models.Services
 			return Result<string>.Success(newFileName);
 		}
 
-		// PUT /api/members/me/password
 		public async Task<Result> ChangePasswordAsync(int memberId, ChangePasswordDto dto)
 		{
 			var member = await _memberRepo.GetMemberByIdAsync(memberId);
-			if (member == null || member.IsDeleted)
-				return Result.Fail("member_not_found");
+			var validation = ValidateMemberStatusStrict(member);
+			if (!validation.IsSuccess)
+				return validation;
 
 			// 純 Google 帳號沒有密碼可以修改
 			if (member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
@@ -165,12 +204,16 @@ namespace EatTogether.API.Models.Services
 			return Result.Success();
 		}
 
-		// POST /api/members/me/email
 		public async Task<Result> RequestEmailChangeAsync(int memberId, RequestEmailChangeDto dto)
 		{
 			var member = await _memberRepo.GetMemberByIdAsync(memberId);
-			if (member == null || member.IsDeleted)
-				return Result.Fail("member_not_found");
+			var validation = ValidateMemberStatusStrict(member);
+			if (!validation.IsSuccess)
+				return validation;
+
+			// 純 Google 帳號不允許修改 Email（避免下次 Google 登入找不到帳號）
+			if (member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
+				return Result.Fail("cannot_change_email_external_login");
 
 			// 不可與目前 Email 相同
 			if (member.Email.Equals(dto.NewEmail, StringComparison.OrdinalIgnoreCase))
@@ -203,14 +246,14 @@ namespace EatTogether.API.Models.Services
 			return Result.Success();
 		}
 
-		// POST /api/members/me/create-account
 		public async Task<Result> CreateAccountAsync(int memberId, CreateAccountDto dto)
 		{
 			var member = await _memberRepo.GetMemberByIdAsync(memberId);
-			if (member == null || member.IsDeleted)
-				return Result.Fail("member_not_found");
+			var validation = ValidateMemberStatusStrict(member);
+			if (!validation.IsSuccess)
+				return validation;
 
-			// 只有純 Google 帳號才能建立一般帳號
+			// 只有純第三方帳號才能建立一般帳號
 			if (member.HashedPassword != HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
 				return Result.Fail("already_has_account");
 
@@ -223,12 +266,12 @@ namespace EatTogether.API.Models.Services
 			return Result.Success();
 		}
 
-		// DELETE /api/members/me/google-link
 		public async Task<Result> UnlinkGoogleAsync(int memberId)
 		{
 			var member = await _memberRepo.GetMemberByIdAsync(memberId);
-			if (member == null || member.IsDeleted)
-				return Result.Fail("member_not_found");
+			var validation = ValidateMemberStatusStrict(member);
+			if (!validation.IsSuccess)
+				return validation;
 
 			// 純第三方帳號無其他第三方綁定不得取消連結（需先建立一般帳號）
 			if (member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
@@ -248,14 +291,67 @@ namespace EatTogether.API.Models.Services
 			return Result.Success();
 		}
 
-		// DELETE /api/members/me
-		public async Task<Result> DeleteAccountAsync(int memberId, DeleteAccountDto dto)
+		// 第一步: 申請刪除
+		public async Task<Result> RequestDeleteAccountAsync(int memberId, DeleteAccountDto dto)
 		{
 			var member = await _memberRepo.GetMemberByIdAsync(memberId);
-			if (member == null || member.IsDeleted)
-				return Result.Fail("member_not_found");
+			var validation = ValidateMemberStatus(member);
+			if (!validation.IsSuccess)
+				return validation;
 
-			// 一般帳號需驗證密碼
+			// 一般帳號需先驗證密碼
+			if (member.HashedPassword != HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
+			{
+				if (string.IsNullOrEmpty(dto.Password))
+					return Result.Fail("password_required");
+				if (!HashUtility.VerifyPassword(dto.Password, member.HashedPassword))
+					return Result.Fail("wrong_password");
+			}
+			// 純第三方帳號無密碼,直接發確認信
+
+			// 先將同一會員舊的刪除帳號 token 標為已使用
+			await _memberRepo.MarkOldDeleteAccountTokensUsedAsync(memberId);
+
+			// todo: 新增 DeleteAccountTokens 資料表
+			// 建立刪除確認 token (重用 MemberConfirmTokens,用特殊標記 "DELETE_ACCOUNT")
+			var deleteToken = Guid.NewGuid().ToString("N");
+			await _memberRepo.CreateConfirmTokenAsync(new MemberConfirmToken
+			{
+				MemberId = memberId,
+				Token = deleteToken,
+				NewEmail = "DELETE_ACCOUNT",  // ← 特殊標記,表示這是刪除帳號 token
+				ExpiresAt = DateTime.Now.AddMinutes(15),
+				IsUsed = false,
+				CreatedAt = DateTime.Now,
+			});
+
+			// 寄送確認信
+			var frontendBase = _config["FrontendBaseUrl"];
+			var confirmUrl = $"{frontendBase}/confirm-delete-account?token={deleteToken}";
+			await _emailService.SendDeleteAccountConfirmAsync(member.Email, member.Name, confirmUrl);
+
+			return Result.Success();
+		}
+
+		// 第二步: 確認刪除, 不需登入
+		public async Task<Result> ConfirmDeleteAccountAsync(ConfirmDeleteAccountDto dto)
+		{
+			// 1. 驗證 token
+			var token = await _memberRepo.GetConfirmTokenAsync(dto.Token);
+			if (token == null || token.IsUsed || token.ExpiresAt <= DateTime.Now)
+				return Result.Fail("invalid_or_expired_token");
+
+			// 2. 確認是刪除帳號 token
+			if (token.NewEmail != "DELETE_ACCOUNT")
+				return Result.Fail("invalid_token_type");
+
+			// 3. 查詢會員
+			var member = await _memberRepo.GetMemberByIdAsync(token.MemberId);
+			var validation = ValidateMemberStatus(member);
+			if (!validation.IsSuccess)
+				return validation;
+
+			// 4. 一般帳號在確認時仍需再次驗證密碼(雙重保護)
 			if (member.HashedPassword != HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
 			{
 				if (string.IsNullOrEmpty(dto.Password))
@@ -264,17 +360,33 @@ namespace EatTogether.API.Models.Services
 					return Result.Fail("wrong_password");
 			}
 
-			// 撤銷所有 Refresh Token（踢除所有裝置）
-			await _memberRepo.RevokeAllRefreshTokensByMemberIdAsync(memberId);
+			// 5. 標記 token 已使用
+			await _memberRepo.MarkConfirmTokenUsedAsync(token.Id);
 
-			// 軟刪除
-			await _memberRepo.SoftDeleteMemberAsync(memberId);
+			// 6. 撤銷所有 Refresh Token（踢除所有裝置）
+			await _memberRepo.RevokeAllRefreshTokensByMemberIdAsync(member.Id);
 
-			// 清除前端 Cookie
-			var response = _httpContextAccessor.HttpContext!.Response;
-			CookieHelper.ClearAuthCookies(response, _env);
+			// 7. 軟刪除
+			await _memberRepo.SoftDeleteMemberAsync(member.Id);
+
+			// 8. 發送刪除完成通知信
+			await _emailService.SendAccountDeletedNoticeAsync(member.Email, member.Name);
 
 			return Result.Success();
 		}
+
+		public async Task<Result> ValidateDeleteTokenAsync(string token)
+		{
+			var confirmToken = await _memberRepo.GetConfirmTokenAsync(token);
+
+			if (confirmToken == null || confirmToken.IsUsed || confirmToken.ExpiresAt <= DateTime.Now)
+				return Result.Fail("invalid_or_expired_token");
+
+			if (confirmToken.NewEmail != "DELETE_ACCOUNT")
+				return Result.Fail("invalid_token_type");
+
+			return Result.Success();
+		}
+
 	}
 }

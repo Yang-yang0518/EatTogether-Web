@@ -10,6 +10,12 @@ namespace EatTogether.API.Models.Infra
 		Task SendPasswordResetEmailAsync(string toEmail, string resetUrl);
 		Task SendSecurityNoticeAsync(string toEmail, string action);
 
+		// 發送刪除帳號確認信
+		Task SendDeleteAccountConfirmAsync(string toEmail, string memberName, string confirmUrl);
+
+		// 發送帳號刪除完成通知信
+		Task SendAccountDeletedNoticeAsync(string toEmail, string memberName);
+
 		// ── 訂位相關 ──
 		Task SendReservationConfirmAsync(string toEmail, string name, string bookingNumber,
 			DateTime reservationDate, int adults, int children);
@@ -156,6 +162,101 @@ namespace EatTogether.API.Models.Infra
     </p>
     <p style=""color:#888;font-size:13px;"">若此操作並非您本人執行，請<a href=""{frontendBaseUrl}"" style=""color:#c0392b;"">登入網站</a>並修改密碼，或聯繫客服。</p>
 </div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+
+		/// <summary>
+		/// 發送刪除帳號確認信
+		/// </summary>
+		public async Task SendDeleteAccountConfirmAsync(string toEmail, string memberName, string confirmUrl)
+		{
+			var subject = "確認刪除帳號 - EatTogether";
+			var body = $@"
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<meta charset=""UTF-8"">
+				<style>
+					body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+					.container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+					.warning {{ background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+					.footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }}
+				</style>
+			</head>
+			<body>
+				<div class=""container"">
+					<h2>確認刪除帳號</h2>
+					<p>親愛的 {memberName}：</p>
+					<p>您申請刪除 EatTogether 帳號。如果這是您的操作，請點擊以下按鈕確認：</p>
+					<a href=""{confirmUrl}"" style=""display:inline-block;padding:12px 24px;background:#c0392b;color:#fff;
+              text-decoration:none;border-radius:4px;margin:16px 0;"">確認刪除帳號</a>
+					<div class=""warning"">
+						<strong>⚠️ 重要警告</strong>
+						<p>此連結將在 <strong>15 分鐘</strong>後失效</p>
+					</div>
+					<p>如果這<strong>不是您的操作</strong>，請：</p>
+					<ol>
+						<li>忽略此信</li>
+						<li>立即更改密碼</li>
+						<li>聯繫客服：support@eattogether.com</li>
+					</ol>
+					<div class=""footer"">
+						<p>此為系統自動發送的郵件，請勿直接回覆。</p>
+						<p>&copy; 2024 EatTogether. All rights reserved.</p>
+					</div>
+				</div>
+			</body>
+			</html>
+		";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+		/// <summary>
+		/// 發送帳號刪除完成通知信
+		/// </summary>
+		public async Task SendAccountDeletedNoticeAsync(string toEmail, string memberName)
+		{
+			var subject = "您的帳號已被刪除 - EatTogether";
+			var body = $@"
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<meta charset=""UTF-8"">
+				<style>
+					body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+					.container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+					.alert {{ background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+					.footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }}
+				</style>
+			</head>
+			<body>
+				<div class=""container"">
+					<h2>帳號已刪除</h2>
+					<p>親愛的 {memberName}：</p>
+					<p>您的 EatTogether 帳號已於 <strong>{DateTime.Now:yyyy-MM-dd HH:mm}</strong> 被刪除。</p>
+					<div class=""alert"">
+						<strong>🔒 安全提醒</strong>
+						<p>如果這<strong>不是您的操作</strong>，表示您的帳號可能已被盜用。</p>
+						<p>請立即聯繫客服：<strong>support@eattogether.com</strong></p>
+						<p>客服電話：<strong>(02) 1234-5678</strong></p>
+					</div>
+					<p>感謝您使用 EatTogether 的服務。</p>
+					<p>期待未來有機會再次為您服務！</p>
+					<div class=""footer"">
+						<p>此為系統自動發送的郵件，請勿直接回覆。</p>
+						<p>&copy; 2024 EatTogether. All rights reserved.</p>
+					</div>
+				</div>
+			</body>
+			</html>
+		";
 
 			using var smtp = BuildSmtpClient();
 			using var message = BuildMailMessage(toEmail, subject, body);

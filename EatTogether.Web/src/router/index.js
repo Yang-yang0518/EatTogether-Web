@@ -22,6 +22,11 @@ const routes = [
         name: 'GoogleCallback',
         component: () => import('@/views/auth/GoogleCallback.vue'),
     },
+    {
+        path: '/confirm-delete-account',
+        name: 'ConfirmDeleteAccount',
+        component: () => import('@/views/auth/ConfirmDeleteAccount.vue'),
+    },
 
     // ── 會員中心（需登入）────────────────────────────────
     {
