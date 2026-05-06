@@ -222,13 +222,11 @@
                         </div>
 
                         <!-- 收藏按鈕 -->
-                        <button
-                            class="fav-btn"
-                            @click.stop="toggleFavorite(dish.id)"
-                            :aria-label="favorites.includes(dish.id) ? '取消收藏' : '加入收藏'"
-                        >
-                            {{ favorites.includes(dish.id) ? '❤️' : '🤍' }}
-                        </button>
+                        <FavoriteButton
+                            :dish-id="dish.id"
+                            :is-favorited="favorites.includes(dish.id)"
+                            @toggle="toggleFavorite"
+                        />
                         <!-- 快速預覽按鈕 -->
                         <button
                             v-if="dish.stockStatus !== 2 && !isUpcoming(dish)"
@@ -348,60 +346,12 @@
                             <span>{{ selectedDish.dishName.charAt(0) }}</span>
                         </div>
                         <div class="modal-img-gradient"></div>
-                        <div class="share-wrap" ref="shareWrapRef">
-                            <button
-                                class="modal-share"
-                                @click.stop="shareMenuOpen = !shareMenuOpen"
-                                aria-label="分享"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="14"
-                                    height="14"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2.2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                                    <polyline points="16 6 12 2 8 6" />
-                                    <line x1="12" y1="2" x2="12" y2="15" />
-                                </svg>
-                            </button>
-                            <Transition name="share-menu">
-                                <div v-if="shareMenuOpen" class="share-menu">
-                                    <button class="share-item" @click="openShareItem('line')">
-                                        <span class="share-icon si-line">L</span>LINE
-                                    </button>
-                                    <button class="share-item" @click="openShareItem('facebook')">
-                                        <span class="share-icon si-fb">f</span>Facebook
-                                    </button>
-                                    <button class="share-item" @click="openShareItem('x')">
-                                        <span class="share-icon si-x">𝕏</span>X
-                                    </button>
-                                    <button class="share-item" @click="openShareItem('copy')">
-                                        <span class="share-icon si-copy">
-                                            <svg
-                                                width="11"
-                                                height="11"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                stroke-width="2.5"
-                                                stroke-linecap="round"
-                                            >
-                                                <rect x="9" y="9" width="13" height="13" rx="2" />
-                                                <path
-                                                    d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                                                />
-                                            </svg> </span
-                                        >複製連結
-                                    </button>
-                                </div>
-                            </Transition>
-                        </div>
+                        <ShareMenu
+                            v-model="shareMenuOpen"
+                            share-url=""
+                            share-title=""
+                            @select="openShareItem"
+                        />
                         <button class="modal-close" @click="closeModal">✕</button>
                         <div class="modal-badge-group">
                             <span class="badge badge-lim">✦ 限定</span>
@@ -423,10 +373,11 @@
                         </div>
 
                         <!-- 收藏按鈕 -->
-                        <button class="modal-fav-btn" @click="toggleFavorite(selectedDish.id)">
-                            <span>{{ favorites.includes(selectedDish.id) ? '❤️' : '🤍' }}</span>
-                            {{ favorites.includes(selectedDish.id) ? '已加入收藏' : '加入收藏' }}
-                        </button>
+                        <FavoriteButton
+                            :dish-id="selectedDish.id"
+                            :is-favorited="favorites.includes(selectedDish.id)"
+                            @toggle="toggleFavorite"
+                        />
 
                         <!-- 描述 -->
                         <p class="modal-desc">
@@ -533,6 +484,8 @@ import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast.js'
 import apiFetch from '@/utils/apiFetch.js'
 import { useAuthStore } from '@/stores/auth.js'
+import ShareMenu from '@/components/common/menu/ShareMenu.vue'
+import FavoriteButton from '@/components/common/menu/FavoriteButton.vue'
 const { show } = useToast()
 const authStore = useAuthStore()
 
@@ -832,7 +785,6 @@ watch(isModalOpen, async (open) => {
 })
 
 const shareMenuOpen = ref(false)
-const shareWrapRef = ref(null)
 
 const openShareItem = async (type) => {
     const dish = selectedDish.value
@@ -865,11 +817,6 @@ const openShareItem = async (type) => {
     shareMenuOpen.value = false
 }
 
-const handleShareClickOutside = (e) => {
-    if (shareMenuOpen.value && shareWrapRef.value && !shareWrapRef.value.contains(e.target)) {
-        shareMenuOpen.value = false
-    }
-}
 
 const openModal = (dish) => {
     // 售完或即將上架 → 不開 Modal
@@ -899,10 +846,13 @@ const limitedDishes = computed(() =>
     dishes.value
         .filter((d) => d.isLimited)
         .sort((a, b) => {
-            // 供應中排前，售完排後
-            const soldA = a.stockStatus === 2 ? 1 : 0
-            const soldB = b.stockStatus === 2 ? 1 : 0
-            return soldA - soldB
+            // 0=上架中, 1=售完, 2=即將上架
+            const rank = (d) => {
+                if (isUpcoming(d)) return 2
+                if (d.stockStatus === 2) return 1
+                return 0
+            }
+            return rank(a) - rank(b)
         })
 )
 
@@ -978,7 +928,6 @@ onMounted(async () => {
     }, 1000)
     window.addEventListener('keydown', handleEsc)
     window.addEventListener('scroll', handleParallax, { passive: true })
-    document.addEventListener('click', handleShareClickOutside)
 
     // 深層連結：偵測 ?dish=id，自動打開對應 Modal
     const params = new URLSearchParams(window.location.search)
@@ -1012,7 +961,6 @@ onUnmounted(() => {
     clearInterval(_clockTimer)
     window.removeEventListener('keydown', handleEsc)
     window.removeEventListener('scroll', handleParallax)
-    document.removeEventListener('click', handleShareClickOutside)
     document.body.style.overflow = ''
 })
 </script>
