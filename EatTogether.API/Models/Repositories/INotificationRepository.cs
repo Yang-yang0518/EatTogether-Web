@@ -7,5 +7,6 @@ namespace EatTogether.API.Models.Repositories
 		Task<IEnumerable<UserNotification>> GetByMemberIdAsync(int memberId);
 		Task MarkAsReadAsync(int notificationId, int memberId);
 		Task MarkAllAsReadAsync(int memberId);
+		Task CreateAsync(UserNotification notification);
 	}
 }
