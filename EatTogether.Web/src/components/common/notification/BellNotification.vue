@@ -25,6 +25,8 @@
                             <span class="title">{{ n.title }}</span>
                             <span v-if="!n.isRead" class="unread-dot"></span>
                         </div>
+                        <!-- message 有值才顯示 -->
+                        <span v-if="n.message" class="message">{{ n.message }}</span>
                         <span class="time">{{ formatTime(n.createdAt) }}</span>
                     </li>
                 </ul>
@@ -72,17 +74,13 @@ async function handleClick(notification) {
     // 依通知類型決定跳轉頁面，以下註解為範例，可自訂更改
     const routes = {
         NEWS: () => router.push({ name: 'NewsDetail', params: { id: notification.referenceId } }),
-        // RESERVATION_CONFIRM: () =>
-        //     router.push({ name: 'MyReservations' }),
+        RESERVATION_CONFIRM: () => router.push({ name: 'MyReservations' }),
+        RESERVATION_CANCEL: () => router.push({ name: 'MyReservations' }),
+        COUPON_RECEIVED: () => router.push({ name: 'MyCoupons' }),
+        TAKEOUT_CREATED: () => router.push({ name: 'OrderLookup' }),
+        TAKEOUT_READY: () => router.push({ name: 'OrderLookup' }),
         // RESERVATION_REMIND: () =>
         //     router.push({ name: 'MyReservations' }),
-        // RESERVATION_CANCEL: () =>
-        //     router.push({ name: 'MyReservations' }),
-        // TAKEOUT_CREATED: () =>
-        //     router.push({ name: 'OrderDetail', params: { id: notification.referenceId } }),
-        // TAKEOUT_READY: () =>
-        //     router.push({ name: 'OrderDetail', params: { id: notification.referenceId } }),
-        // COUPON_RECEIVED: () => router.push({ name: 'CouponUsage' }),
         // COUPON_EXPIRING: () => router.push({ name: 'CouponUsage' }),
     }
     const navigate = routes[notification.type]
@@ -288,10 +286,23 @@ li.unread {
     color: var(--eat-on-surface);
     line-height: 1.5;
     overflow: hidden;
-    white-space: nowrap;
+    white-space: normal;
     text-overflow: ellipsis;
     flex: 1;
     min-width: 0;
+    -webkit-line-clamp: 2;
+}
+
+/* ── 訊息 ── */
+.message {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    color: var(--eat-on-surface-variant);
+    line-height: 1.4;
+    overflow: hidden;
+    white-space: normal;
+    text-overflow: ellipsis;
+    -webkit-line-clamp: 2;
 }
 
 /* ── 未讀圓點 ── */

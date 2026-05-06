@@ -227,7 +227,8 @@ const minutes = [0, 15, 30, 45]
 
 // 日期範圍（原生 input[type=date] 需要 "yyyy-MM-dd" 格式）
 function toDateStr(d) {
-  return d.toISOString().split('T')[0]
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 const minDateStr = computed(() => {
   const d = new Date()
@@ -240,11 +241,43 @@ const maxDateStr = computed(() => {
   return toDateStr(d)
 })
 
+// 預設：今日日期 + 最早可訂時段（當下 +30 分鐘，進位至 15 分鐘刻度，限 11:00～20:00）
+function getDefaultDateTime() {
+  const earliest = new Date(Date.now() + 30 * 60_000)
+
+  // 進位至下一個 15 分鐘刻度
+  const roundUp = Math.ceil(earliest.getMinutes() / 15) * 15
+  if (roundUp >= 60) {
+    earliest.setHours(earliest.getHours() + 1, 0, 0, 0)
+  } else {
+    earliest.setMinutes(roundUp, 0, 0)
+  }
+
+  let h   = earliest.getHours()
+  let min = earliest.getMinutes()
+  let dateStr = toDateStr(earliest)
+
+  // 早於 11:00 → 從 11:00 開始
+  if (h < 11) { h = 11; min = 0 }
+
+  // 晚於 20:00 → 改為明日 11:00
+  if (h > 20 || (h === 20 && min > 0)) {
+    const next = new Date(earliest)
+    next.setDate(next.getDate() + 1)
+    dateStr = toDateStr(next)
+    h = 11; min = 0
+  }
+
+  return { date: dateStr, hour: h, minute: min }
+}
+
+const { date: defaultDate, hour: defaultHour, minute: defaultMinute } = getDefaultDateTime()
+
 // 表單狀態
 const form = ref({
-  date:     null,
-  hour:     '',
-  minute:   '',
+  date:     defaultDate,
+  hour:     defaultHour,
+  minute:   defaultMinute,
   adults:   2,
   children: 0,
   name:     '',
@@ -370,13 +403,17 @@ async function submitBooking() {
 }
 
 function resetForm() {
-  form.value = { date: null, hour: '', minute: '', adults: 2, children: 0, name: '', phone: '', email: '', remark: '' }
+  const { date, hour, minute } = getDefaultDateTime()
+  form.value = { date, hour, minute, adults: 2, children: 0, name: '', phone: '', email: '', remark: '' }
   errors.value = {}
   availability.value = null
 }
 
-// 登入狀態：自動填入會員資料
+// 登入狀態：自動填入會員資料；並以預設時間觸發桌況查詢
 onMounted(async () => {
+  // 預設時間已帶入，直接觸發即時桌況
+  fetchAvailability()
+
   if (!authStore.isLoggedIn) return
   try {
     const res = await apiFetch('/members/me')

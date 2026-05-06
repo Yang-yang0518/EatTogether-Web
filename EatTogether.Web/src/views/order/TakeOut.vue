@@ -1066,7 +1066,9 @@
                     >
                         <span class="font-label confirm-dim">活動</span>
                         <span class="font-label confirm-mid">{{ bestAutoEvent.title }}</span>
-                        <span class="font-label confirm-green">折抵 NT$ {{ autoEventDiscount.toLocaleString() }}</span>
+                        <span class="font-label confirm-green"
+                            >折抵 NT$ {{ autoEventDiscount.toLocaleString() }}</span
+                        >
                     </div>
                     <!-- 贈品型活動：只顯示參加提示 -->
                     <div
@@ -1082,7 +1084,9 @@
                     <div v-if="couponOk && couponDiscount > 0" class="confirm-total-row-3">
                         <span class="font-label confirm-dim">優惠券</span>
                         <span class="font-label confirm-mid">{{ couponCode }}</span>
-                        <span class="font-label confirm-green">折抵 NT$ {{ couponDiscount.toLocaleString() }}</span>
+                        <span class="font-label confirm-green"
+                            >折抵 NT$ {{ couponDiscount.toLocaleString() }}</span
+                        >
                     </div>
                     <!-- 合計（原價） -->
                     <div class="confirm-total-row">
@@ -1096,7 +1100,12 @@
                     >
                         <span class="font-label confirm-dim">折扣</span>
                         <span class="font-label confirm-green"
-                            >－ NT$ {{ (autoEventDiscount + (couponOk ? couponDiscount : 0)).toLocaleString() }}</span
+                            >－ NT$
+                            {{
+                                (
+                                    autoEventDiscount + (couponOk ? couponDiscount : 0)
+                                ).toLocaleString()
+                            }}</span
                         >
                     </div>
                     <!-- 應付金額 -->
@@ -1263,7 +1272,11 @@
                             </div>
                             <!-- 贈品活動來源（贈品型活動才顯示） -->
                             <div
-                                v-if="confirmedGift && confirmedEventTitle && confirmedEventDiscountType === 'Gift'"
+                                v-if="
+                                    confirmedGift &&
+                                    confirmedEventTitle &&
+                                    confirmedEventDiscountType === 'Gift'
+                                "
                                 class="sp-gift-event-note font-label"
                             >
                                 {{ confirmedEventTitle }}：{{ confirmedEventDesc }}
@@ -1279,19 +1292,30 @@
                                 class="sp-meta-row-3"
                             >
                                 <span class="font-label sp-meta-label">活動</span>
-                                <span class="font-label sp-meta-val-mid">{{ confirmedEventTitle }}</span>
-                                <span class="font-label sp-meta-discount">折抵 NT$ {{ confirmedAutoEventDiscount.toLocaleString() }}</span>
+                                <span class="font-label sp-meta-val-mid">{{
+                                    confirmedEventTitle
+                                }}</span>
+                                <span class="font-label sp-meta-discount"
+                                    >折抵 NT$
+                                    {{ confirmedAutoEventDiscount.toLocaleString() }}</span
+                                >
                             </div>
                             <!-- 優惠券 -->
                             <div v-if="confirmedCouponCode" class="sp-meta-row-3">
                                 <span class="font-label sp-meta-label">優惠券</span>
-                                <span class="font-label sp-meta-val-mid">{{ confirmedCouponCode }}</span>
-                                <span class="font-label sp-meta-discount">折抵 NT$ {{ confirmedCouponDiscount.toLocaleString() }}</span>
+                                <span class="font-label sp-meta-val-mid">{{
+                                    confirmedCouponCode
+                                }}</span>
+                                <span class="font-label sp-meta-discount"
+                                    >折抵 NT$ {{ confirmedCouponDiscount.toLocaleString() }}</span
+                                >
                             </div>
                             <!-- 合計（原價） -->
                             <div class="sp-meta-row">
                                 <span class="font-label sp-meta-label">合計</span>
-                                <span class="font-label sp-meta-val">NT$ {{ confirmedSubtotal.toLocaleString() }}</span>
+                                <span class="font-label sp-meta-val"
+                                    >NT$ {{ confirmedSubtotal.toLocaleString() }}</span
+                                >
                             </div>
                             <!-- 折扣（有折扣才顯示） -->
                             <div
@@ -1300,7 +1324,12 @@
                             >
                                 <span class="font-label sp-meta-label">折扣</span>
                                 <span class="font-label sp-meta-val" style="color: #7ec87e"
-                                    >－ NT$ {{ (confirmedAutoEventDiscount + confirmedCouponDiscount).toLocaleString() }}</span
+                                    >－ NT$
+                                    {{
+                                        (
+                                            confirmedAutoEventDiscount + confirmedCouponDiscount
+                                        ).toLocaleString()
+                                    }}</span
                                 >
                             </div>
                         </div>
@@ -1308,8 +1337,12 @@
                         <!-- 金額總計（突出顯示） -->
                         <div class="feather-divider" style="margin: 0.75rem 0 0.65rem"></div>
                         <div class="sp-meta-row">
-                            <span class="font-label sp-meta-label" style="font-size: 1rem">金額總計</span>
-                            <span class="font-label sp-meta-gold">NT$ {{ confirmedTotal.toLocaleString() }}</span>
+                            <span class="font-label sp-meta-label" style="font-size: 1rem"
+                                >金額總計</span
+                            >
+                            <span class="font-label sp-meta-gold"
+                                >NT$ {{ confirmedTotal.toLocaleString() }}</span
+                            >
                         </div>
 
                         <!-- 備註（金額總計下方） -->
@@ -1423,6 +1456,45 @@
         />
 
         <!-- 成功 Modal 已移除，改為 step 4 整頁呈現 -->
+
+        <!-- 優惠券 × 活動衝突警告 Modal -->
+        <Teleport to="body">
+            <Transition name="cew-fade">
+                <div v-if="couponEventWarnModal" class="cew-overlay" @click.self="cancelCouponWarn">
+                    <div class="cew-box">
+                        <div class="cew-icon">⚠️</div>
+                        <p class="font-headline cew-title">注意</p>
+                        <p class="font-label cew-body">
+                            使用此優惠券後，需要再消費
+                            <strong class="cew-highlight">
+                                NT$
+                                {{
+                                    (bestAutoEvent
+                                        ? bestAutoEvent.minSpend -
+                                          (total - (pendingCouponData?.discount ?? 0))
+                                        : 0
+                                    ).toLocaleString()
+                                }}
+                            </strong>
+                            才可享「<strong class="cew-highlight">{{ bestAutoEvent?.title }}</strong
+                            >」 活動優惠（{{ bestAutoEvent?.discountDescription }}）。
+                        </p>
+                        <p class="font-label cew-sub">確定要使用優惠券嗎？</p>
+                        <div class="cew-btns">
+                            <button class="cew-btn-cancel font-label" @click="cancelCouponWarn">
+                                取消
+                            </button>
+                            <button
+                                class="cew-btn-confirm font-label"
+                                @click="confirmCouponDespiteEvent"
+                            >
+                                確定使用
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
 
         <!-- 簡易 Toast -->
         <Teleport to="body">
@@ -1546,6 +1618,7 @@ const cartOpen = ref(false)
 
 // ── 會員狀態（從全域 authStore）─────────────────────
 const isLoggedIn = computed(() => authStore.isLoggedIn)
+const currentMemberId = computed(() => authStore.member?.id ?? null)
 
 // ── 菜單 ─────────────────────────────────────────────
 const products = ref([])
@@ -1603,12 +1676,12 @@ const confirmedNote = ref('')
 const confirmedGift = ref(null)
 const confirmedEventTitle = ref('')
 const confirmedEventDesc = ref('')
-const confirmedEventDiscountType = ref('')   // 'FixedAmount' | 'Percent' | 'Gift' | ''
+const confirmedEventDiscountType = ref('') // 'FixedAmount' | 'Percent' | 'Gift' | ''
 const confirmedAutoEventDiscount = ref(0)
 const confirmedCouponCode = ref('')
 const confirmedCouponDiscount = ref(0)
 const confirmedCouponMsg = ref('')
-const confirmedSubtotal = ref(0)             // 餐點原價合計（未含折扣）
+const confirmedSubtotal = ref(0) // 餐點原價合計（未含折扣）
 const orderProgress = ref(1) // 動態進度條：1=接收 2=製作中 3=完成
 
 // ── Modal 狀態 ───────────────────────────────────────
@@ -1626,6 +1699,10 @@ const couponMsg = ref('')
 const couponOk = ref(false)
 const couponId = ref(null)
 const couponDiscount = ref(0)
+
+// 優惠券 × 活動衝突警告 Modal
+const couponEventWarnModal = ref(false)
+const pendingCouponData = ref(null) // { discount, couponId, message }
 
 // 已領優惠券下拉選單
 const myCoupons = ref([])
@@ -2043,16 +2120,49 @@ async function applyCoupon() {
         })
         const data = await res.json()
         if (data.isValid) {
-            couponMsg.value = data.message || `折抵 NT$ ${data.discount}`
-            couponOk.value = true
-            couponId.value = data.couponId
-            couponDiscount.value = data.discount ?? 0
+            const discount = data.discount ?? 0
+            // 已套用活動且使用優惠券後金額低於活動門檻 → 先警告
+            if (
+                isLoggedIn.value &&
+                bestAutoEvent.value &&
+                total.value - discount < bestAutoEvent.value.minSpend
+            ) {
+                pendingCouponData.value = {
+                    discount,
+                    couponId: data.couponId,
+                    message: data.message || `折抵 NT$ ${discount}`,
+                }
+                couponEventWarnModal.value = true
+            } else {
+                couponMsg.value = data.message || `折抵 NT$ ${discount}`
+                couponOk.value = true
+                couponId.value = data.couponId
+                couponDiscount.value = discount
+            }
         } else {
             couponMsg.value = data.message || '優惠券無效或不符條件'
         }
     } catch {
         couponMsg.value = '驗證失敗，請稍後再試'
     }
+}
+
+// 使用者確認「仍要用優惠券」
+function confirmCouponDespiteEvent() {
+    if (!pendingCouponData.value) return
+    const { discount, couponId: cid, message } = pendingCouponData.value
+    couponMsg.value = message
+    couponOk.value = true
+    couponId.value = cid
+    couponDiscount.value = discount
+    pendingCouponData.value = null
+    couponEventWarnModal.value = false
+}
+
+// 使用者取消（不套用優惠券）
+function cancelCouponWarn() {
+    pendingCouponData.value = null
+    couponEventWarnModal.value = false
 }
 
 // ── 步驟流程 ─────────────────────────────────────────
@@ -2258,6 +2368,7 @@ async function submitOrder() {
             pickupTime: pickupTime.value,
             customerName: customerName.value.trim(),
             customerPhone: customerPhone.value.trim(),
+            memberId: currentMemberId.value,
             couponId: couponId.value,
             discountAmount: (couponOk.value ? couponDiscount.value : 0) + autoEventDiscount.value,
             items: itemsPayload,
@@ -2418,6 +2529,10 @@ onMounted(async () => {
     } finally {
         loading.value = false
     }
+
+    // 頁面載入時若購物車（Pinia 持久化）已有品項，主動觸發一次活動計算
+    // watch(total) 只在值「改變」時才跑，初始值不觸發，故需在此補呼叫
+    if (total.value > 0) fetchActiveEvents()
 })
 </script>
 
@@ -2524,6 +2639,101 @@ onMounted(async () => {
 }
 
 /* ── simple toast ── */
+/* ── 優惠券 × 活動衝突警告 Modal ── */
+.cew-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9500;
+}
+.cew-box {
+    background: #2a1a12;
+    border: 1px solid rgba(227, 199, 107, 0.3);
+    border-radius: 0.75rem;
+    padding: 2rem 1.75rem 1.5rem;
+    max-width: 360px;
+    width: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.cew-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+.cew-title {
+    color: #e3c76b;
+    font-size: 1.15rem;
+    margin: 0;
+}
+.cew-body {
+    color: rgba(208, 197, 181, 0.85);
+    font-size: 0.9rem;
+    line-height: 1.65;
+    text-align: center;
+    margin: 0;
+}
+.cew-highlight {
+    color: #e3c76b;
+    font-weight: 700;
+}
+.cew-sub {
+    color: rgba(208, 197, 181, 0.55);
+    font-size: 0.82rem;
+    margin: 0;
+}
+.cew-btns {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0.25rem;
+}
+.cew-btn-cancel {
+    flex: 1;
+    padding: 0.65rem;
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    border-radius: 0.35rem;
+    background: transparent;
+    color: rgba(208, 197, 181, 0.6);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+        border-color 0.2s,
+        color 0.2s;
+}
+.cew-btn-cancel:hover {
+    border-color: rgba(208, 197, 181, 0.4);
+    color: rgba(208, 197, 181, 0.9);
+}
+.cew-btn-confirm {
+    flex: 1;
+    padding: 0.65rem;
+    border: none;
+    border-radius: 0.35rem;
+    background: linear-gradient(135deg, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.cew-btn-confirm:hover {
+    opacity: 0.88;
+}
+.cew-fade-enter-active,
+.cew-fade-leave-active {
+    transition: opacity 0.2s;
+}
+.cew-fade-enter-from,
+.cew-fade-leave-to {
+    opacity: 0;
+}
+
 .simple-toast {
     position: fixed;
     bottom: 4.5rem;

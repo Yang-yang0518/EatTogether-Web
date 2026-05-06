@@ -639,6 +639,28 @@ public partial class EatTogetherDBContext : DbContext
             entity.HasOne(d => d.Member).WithMany(p => p.Reservations)
                 .HasForeignKey(d => d.MemberId)
                 .HasConstraintName("FK_Reservations_Members");
+
+            entity.HasOne(d => d.Table).WithMany(p => p.Reservations)
+                .HasForeignKey(d => d.TableId)
+                .HasConstraintName("FK_Reservations_Tables");
+        });
+
+        modelBuilder.Entity<Review>(entity =>
+        {
+            entity.Property(e => e.Content)
+                .IsRequired()
+                .HasMaxLength(200);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Nickname)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.HasOne(d => d.Dish).WithMany(p => p.Reviews)
+                .HasForeignKey(d => d.DishId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Reviews_Dishes");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -671,7 +693,7 @@ public partial class EatTogetherDBContext : DbContext
 
         modelBuilder.Entity<SchedulerLog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Schedule__3214EC0761A5E7AB");
+            entity.HasKey(e => e.Id).HasName("PK__Schedule__3214EC07F08E49CF");
 
             entity.Property(e => e.ExecutedAt)
                 .HasDefaultValueSql("(getdate())")
