@@ -1770,14 +1770,8 @@ namespace EatTogether.Models.Services
         // type: "orderNumber" | "name" | "phone"
         public async Task<List<OrderLookupResultDto>> QueryTodayPendingTakeoutAsync(string type, string q)
         {
-            var today   = DateTime.Today;
-            var pending = await _preOrderRepo.GetByStatusAsync(PreOrderStatus.Pending);
-
-            // 只查當日外帶（InOrOut=false）且有未完成品項的訂單
-            var todayTakeout = pending
-                .Where(p => p.OrderAt.Date == today && !p.InOrOut)
-                .Where(p => p.PreOrderDetails.Any(d => d.DoneOrCancel == 0))
-                .ToList();
+            // 當日外帶：待處理 + 結帳後 30 分鐘內
+            var todayTakeout = await _preOrderRepo.GetTodayTakeoutForLookupAsync();
 
             var results = new List<OrderLookupResultDto>();
             foreach (var p in todayTakeout)
@@ -1854,6 +1848,7 @@ namespace EatTogether.Models.Services
                     CustomerName     = note.CustomerName  ?? "",
                     CustomerPhone    = note.CustomerPhone ?? "",
                     PickupTime       = note.PickupTime    ?? "",
+                    OrderStatus      = p.DoneOrCancel,
                     Subtotal         = p.OriginalAmount,
                     DiscountAmount   = p.DiscountAmount,
                     TotalAmount      = p.TotalAmount,

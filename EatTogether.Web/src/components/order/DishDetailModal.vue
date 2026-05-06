@@ -56,7 +56,7 @@
                     ></textarea>
                 </div>
                 <!-- 底部：加入 / 確認修改 按鈕 -->
-                <button @click="onConfirm" class="submit-btn font-label detail-submit uppercase">
+                <button @click="onConfirm" class="ddm-confirm-btn font-label uppercase">
                     {{ editMode ? '確認修改' : '加入本桌訂單' }}
                 </button>
             </div>
@@ -225,18 +225,6 @@ function onConfirm() {
     border-color: #e3c76b;
     color: #e3c76b;
 }
-.submit-btn {
-    background: linear-gradient(to right, #e3c76b, #c6ab53);
-    color: #3b2f00;
-    display: block;
-}
-.submit-btn:hover {
-    filter: brightness(1.1);
-}
-.submit-btn:active {
-    transform: scale(0.97);
-}
-
 /* ── 內容區整體 ── */
 .detail-body {
     display: flex;
@@ -331,20 +319,28 @@ function onConfirm() {
     color: rgba(208, 197, 181, 0.28);
 }
 
-/* 底部按鈕 */
-.detail-submit {
-    width: 100%;
+/* 底部確認按鈕（獨立命名，不與父元件 .submit-btn 衝突） */
+.ddm-confirm-btn {
     display: block;
+    width: 100%;
     padding: 0.9rem 0;
-    font-size: 0.85rem;
-    letter-spacing: 0.28em;
     margin-bottom: 1.5rem;
     border: none;
+    border-radius: 0;
     cursor: pointer;
-    transition:
-        filter 0.2s,
-        transform 0.15s;
+    font-size: 0.85rem;
+    letter-spacing: 0.28em;
+    background: linear-gradient(to right, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    transition: filter 0.2s, transform 0.15s;
 }
+.ddm-confirm-btn:hover {
+    filter: brightness(1.1);
+}
+.ddm-confirm-btn:active {
+    transform: scale(0.97);
+}
+
 .badge-new {
     background: rgba(227, 199, 107, 0.18);
     border: 1px solid rgba(227, 199, 107, 0.45);
@@ -471,19 +467,9 @@ function onConfirm() {
         transition: border-color 0.25s;
         box-sizing: border-box;
     }
-
-    .detail-submit {
-        width: 100%;
-        display: block;
+    .ddm-confirm-btn {
         padding: 0.65rem 0;
-        font-size: 0.85rem;
-        letter-spacing: 0.28em;
         margin-bottom: 0.6rem;
-        border: none;
-        cursor: pointer;
-        transition:
-            filter 0.2s,
-            transform 0.15s;
     }
 }
 </style>

@@ -135,13 +135,13 @@
                     <!-- 查無結果 -->
                     <div v-else-if="searched && results.length === 0" class="ol-empty">
                         <div class="ol-empty-icon">📭</div>
-                        <p class="font-body ol-empty-text">查無當日未完成外帶訂單</p>
-                        <p class="font-label ol-empty-hint">請確認資料是否填寫正確，或訂單已完成</p>
+                        <p class="font-body ol-empty-text">查無符合的外帶訂單</p>
+                        <p class="font-label ol-empty-hint">請確認資料是否填寫正確，或查詢僅限當日訂單</p>
                     </div>
 
                     <!-- 有結果：直接顯示詳情 -->
                     <template v-else-if="selectedOrder">
-                        <!-- 進度條（全寬） -->
+                        <!-- 進度條（全寬）：依 orderStatus 決定狀態 -->
                         <div class="ol-progress">
                             <div class="ol-prog-step ol-prog-done">
                                 <div class="ol-prog-dot">
@@ -159,16 +159,54 @@
                                 </div>
                                 <span class="font-label ol-prog-lbl">訂單已接收</span>
                             </div>
-                            <div class="ol-prog-line ol-prog-line-lit"></div>
-                            <div class="ol-prog-step ol-prog-active">
-                                <div class="ol-prog-dot"><span>2</span></div>
+                            <div
+                                :class="['ol-prog-line', selectedOrder.orderStatus === 1 ? 'ol-prog-line-lit' : 'ol-prog-line-lit']"
+                            ></div>
+                            <div
+                                :class="['ol-prog-step', selectedOrder.orderStatus === 1 ? 'ol-prog-done' : 'ol-prog-active']"
+                            >
+                                <div class="ol-prog-dot">
+                                    <svg
+                                        v-if="selectedOrder.orderStatus === 1"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                    >
+                                        <path
+                                            d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                                        />
+                                    </svg>
+                                    <span v-else>2</span>
+                                </div>
                                 <span class="font-label ol-prog-lbl">餐點製作中</span>
                             </div>
-                            <div class="ol-prog-line"></div>
-                            <div class="ol-prog-step">
-                                <div class="ol-prog-dot"><span>3</span></div>
+                            <div
+                                :class="['ol-prog-line', selectedOrder.orderStatus === 1 ? 'ol-prog-line-lit' : '']"
+                            ></div>
+                            <div :class="['ol-prog-step', selectedOrder.orderStatus === 1 ? 'ol-prog-done' : '']">
+                                <div class="ol-prog-dot">
+                                    <svg
+                                        v-if="selectedOrder.orderStatus === 1"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                    >
+                                        <path
+                                            d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                                        />
+                                    </svg>
+                                    <span v-else>3</span>
+                                </div>
                                 <span class="font-label ol-prog-lbl">餐點已完成</span>
                             </div>
+                        </div>
+                        <!-- 已結帳提示 -->
+                        <div v-if="selectedOrder.orderStatus === 1" class="ol-paid-badge font-label">
+                            ✅ 此訂單已結帳完成
                         </div>
 
                         <!-- 左右兩欄 -->
@@ -1081,6 +1119,19 @@ function openEditModal() {
 /* 贈品背景 */
 .ol-item-gift {
     background: rgba(163, 217, 119, 0.04);
+}
+/* 已結帳提示 */
+.ol-paid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    color: #7ec87e;
+    background: rgba(126, 200, 126, 0.08);
+    border: 1px solid rgba(126, 200, 126, 0.25);
+    border-radius: 0.3rem;
+    padding: 0.3rem 0.7rem;
+    margin-bottom: 0.5rem;
 }
 /* 贈品活動來源標註 */
 .ol-gift-event-note {
