@@ -24,13 +24,18 @@
                 <span class="eat-label me-2">{{ r.bookingNumber }}</span>
                 <span :class="statusClass(r.status)" class="badge-status">{{ r.statusText }}</span>
               </div>
-              <Button
-                v-if="canCancel(r)"
-                variant="danger"
-                size="sm"
-                :loading="cancelling && cancelTarget?.id === r.id"
-                @click="openCancel(r)"
-              >取消訂位</Button>
+              <div v-if="r.status === 0" class="d-flex flex-column align-items-end gap-1">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  :disabled="!canCancel(r)"
+                  :loading="cancelling && cancelTarget?.id === r.id"
+                  @click="canCancel(r) && openCancel(r)"
+                >取消訂位</Button>
+                <span v-if="!canCancel(r)" class="cancel-hint">
+                  <i class="bi bi-clock me-1"></i>訂位前 1 小時內請來電取消
+                </span>
+              </div>
             </div>
             <div class="feather-divider my-2" style="margin:0.75rem 0"></div>
             <div class="row g-2 eat-body">
@@ -217,6 +222,12 @@ onMounted(fetchReservations)
 .status-arrived   { background: rgba(60,179,113,.15);  color: #3cb371;            border: 1px solid rgba(60,179,113,.3); }
 .status-cancelled { background: rgba(150,150,150,.12); color: rgba(208,197,181,.55); border: 1px solid rgba(150,150,150,.2); }
 .status-noshow    { background: rgba(192,57,43,.15);   color: var(--eat-error);    border: 1px solid rgba(192,57,43,.3); }
+
+.cancel-hint {
+  font-size: .75rem;
+  color: rgba(226,210,185,.4);
+  letter-spacing: .02em;
+}
 
 .modal-overlay {
   position: fixed; inset: 0; z-index: 1050;
