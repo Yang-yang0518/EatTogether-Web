@@ -107,13 +107,14 @@
                     <template v-for="(cat, idx) in sidebarCategories" :key="cat.key">
                         <div
                             v-if="
-                                idx > 0 &&
-                                !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
-                                    cat.key
-                                ) &&
-                                ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
-                                    sidebarCategories[idx - 1].key
-                                )
+                                cat.isDividerBefore ||
+                                (idx > 0 &&
+                                    !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
+                                        cat.key
+                                    ) &&
+                                    ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
+                                        sidebarCategories[idx - 1].key
+                                    ))
                             "
                             class="cat-divider"
                         ></div>
@@ -257,15 +258,39 @@
                                 <div
                                     v-for="item in order.items?.filter((i) => i)"
                                     :key="item.productName"
-                                    class="font-body"
-                                    style="color: #f9ddd3; font-size: 0.9rem"
+                                    class="history-item-wrap"
                                 >
-                                    {{ item.qty }} x {{ item.productName }}
-                                    <span
-                                        v-if="item.note"
-                                        style="color: rgba(208, 197, 181, 0.5); font-size: 0.8rem"
-                                        >（{{ item.note }}）</span
+                                    <div
+                                        class="font-body"
+                                        style="color: #f9ddd3; font-size: 0.9rem"
                                     >
+                                        <span
+                                            v-if="item.isSetMeal"
+                                            class="history-setmeal-badge font-label"
+                                            >套餐</span
+                                        >
+                                        {{ item.qty }} x {{ item.productName }}
+                                        <span
+                                            v-if="item.note"
+                                            style="
+                                                color: rgba(208, 197, 181, 0.5);
+                                                font-size: 0.8rem;
+                                            "
+                                            >（{{ item.note }}）</span
+                                        >
+                                    </div>
+                                    <!-- 套餐子項目 -->
+                                    <div
+                                        v-if="item.isSetMeal && item.subItems?.length"
+                                        class="history-subitems"
+                                    >
+                                        <span
+                                            v-for="sub in item.subItems"
+                                            :key="sub.productName"
+                                            class="font-body history-subitem"
+                                            >{{ sub.qty }} x {{ sub.productName }}</span
+                                        >
+                                    </div>
                                 </div>
                                 <div
                                     v-if="order.orderNote"
@@ -1355,8 +1380,16 @@
 
                 <!-- 右欄：提醒 + 取餐 + 聯絡 + 返回 -->
                 <div class="sp-col-right">
-                    <!-- 防呆提醒（最上方）-->
+                    <!-- 防呆提醒 -->
                     <div class="sp-reminders">
+                        <!-- 查詢訂單進度提示（卡片最上方） -->
+                        <p class="font-label sp-lookup-hint-text">
+                            想確認取餐進度可至
+                            <RouterLink to="/order-lookup" class="sp-lookup-link"
+                                >訂單查詢頁</RouterLink
+                            >
+                            隨時查詢
+                        </p>
                         <div class="sp-reminder-item">
                             <span class="sp-reminder-icon">⏱</span>
                             <span class="font-label">餐點現點現做，請耐心等候</span>
@@ -1398,6 +1431,12 @@
                                 <span class="font-label sp-meta-label">取餐方式</span>
                                 <span class="font-label sp-meta-val">臨櫃自取</span>
                             </div>
+                            <div class="sp-meta-row">
+                                <span class="font-label sp-meta-label">餐具</span>
+                                <span class="font-label sp-meta-val">{{
+                                    confirmedNeedUtensils ? '需要' : '不需要'
+                                }}</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1425,7 +1464,7 @@
             :initial-qty="
                 editingLineId !== null
                     ? (cartItemsWithDetails.find((i) => i.lineId === editingLineId)?.qty ?? 1)
-                    : 1
+                    : (activeDetail?.defaultQty ?? 1)
             "
             :initial-note="
                 editingLineId !== null
@@ -1450,8 +1489,10 @@
                     ? (store.lines.find((l) => l.lineId === editingMealLineId)?.note ?? '')
                     : ''
             "
-            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : {}"
-            @close="((activeMeal = null), (editingMealLineId = null))"
+            :initial-sel="
+                editingMealLineId !== null ? buildInitialSel(editingMealLineId) : demoMealInitialSel
+            "
+            @close="((activeMeal = null), (editingMealLineId = null), (demoMealInitialSel = {}))"
             @confirm="onSetMealConfirm"
         />
 
@@ -1529,17 +1570,15 @@
                         :key="toast.key"
                         :class="[
                             'notify-toast-card',
-                            !isLoggedIn
-                                ? 'eligible'
-                                : toast.type === 'near'
-                                  ? 'near'
-                                  : toast.type === 'eligible-notify'
-                                    ? 'eligible'
-                                    : toast.type === 'one-event-note'
-                                      ? 'info'
-                                      : toast.type === 'applied-event'
-                                        ? 'applied'
-                                        : 'eligible',
+                            toast.type === 'near'
+                                ? 'near'
+                                : toast.type === 'eligible-notify'
+                                  ? 'eligible'
+                                  : toast.type === 'one-event-note'
+                                    ? 'info'
+                                    : toast.type === 'applied-event'
+                                      ? 'applied'
+                                      : 'eligible',
                         ]"
                     >
                         <button class="notify-toast-close" @click="dismissToast(toast.key)">
@@ -1558,9 +1597,11 @@
                         </div>
                         <p class="font-body notify-toast-msg">
                             <template v-if="toast.type === 'near'"
-                                >差 NT${{ toast.ev.minSpend - total }} 即可參加「{{
-                                    toast.ev.title
-                                }}」活動，享 {{ toast.ev.discountDescription }} 優惠！</template
+                                >差 NT${{
+                                    toast.ev.minSpend - (total - couponDiscount)
+                                }}
+                                即可參加「{{ toast.ev.title }}」活動，享
+                                {{ toast.ev.discountDescription }} 優惠！</template
                             >
                             <template v-else-if="toast.type === 'eligible-notify'">
                                 <template v-if="!isLoggedIn">
@@ -1584,7 +1625,7 @@
                                 </template>
                             </template>
                             <template v-else-if="toast.type === 'one-event-note'"
-                                >每次用餐能參加一個活動，不得與其他優惠活動合併使用</template
+                                >每次用餐能參加一個活動，不得與其他優惠活動合併使用(系統將自動套入門檻最高的活動)</template
                             >
                             <template v-else-if="toast.type === 'applied-event'"
                                 >已參加「{{ toast.ev.title }}」活動 （滿 NT${{
@@ -1604,13 +1645,14 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useOrderStore } from '@/stores/order'
 import { useAuthStore } from '@/stores/auth'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import apiFetch from '@/utils/apiFetch'
 import DishDetailModal from '@/components/Order/DishDetailModal.vue'
 import SetMealSelectModal from '@/components/Order/SetMealSelectModal.vue'
 
 const store = useOrderStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 // ── 步驟 & 畫面狀態 ──────────────────────────────────
 const step = ref(1)
@@ -1665,11 +1707,20 @@ watch(
     },
     { immediate: true }
 )
+// 登入後自動帶入會員電話  ← 新增
+watch(
+    () => authStore.member?.phone, // ← key 名稱依你 authStore 實際欄位調整
+    (phone) => {
+        if (phone) customerPhone.value = phone
+    },
+    { immediate: true }
+)
 
 // ── 訂單完成後儲存（成功頁顯示用）─────────────────
 const confirmedPickupTime = ref('')
 const confirmedName = ref('')
 const confirmedPhone = ref('')
+const confirmedNeedUtensils = ref(false)
 const confirmedTotal = ref(0)
 const confirmedItems = ref([]) // 快照購物車（store.clearOrder 前存入）
 const confirmedNote = ref('')
@@ -1684,6 +1735,59 @@ const confirmedCouponMsg = ref('')
 const confirmedSubtotal = ref(0) // 餐點原價合計（未含折扣）
 const orderProgress = ref(1) // 動態進度條：1=接收 2=製作中 3=完成
 
+// ── 成功頁 localStorage 持久化（同日期重整後還原）──────
+const SUCCESS_KEY = 'takeout_success_v1'
+const _todayYMD = () => new Date().toISOString().slice(0, 10)
+
+function saveSuccessToStorage() {
+    try {
+        localStorage.setItem(
+            SUCCESS_KEY,
+            JSON.stringify({
+                date: _todayYMD(),
+                orderNumber: orderNumber.value,
+                orderProgress: orderProgress.value,
+                confirmedPickupTime: confirmedPickupTime.value,
+                confirmedName: confirmedName.value,
+                confirmedPhone: confirmedPhone.value,
+                confirmedNeedUtensils: confirmedNeedUtensils.value,
+                confirmedTotal: confirmedTotal.value,
+                confirmedItems: JSON.parse(JSON.stringify(confirmedItems.value)),
+                confirmedNote: confirmedNote.value,
+                confirmedGift: confirmedGift.value,
+                confirmedEventTitle: confirmedEventTitle.value,
+                confirmedEventDesc: confirmedEventDesc.value,
+                confirmedEventDiscountType: confirmedEventDiscountType.value,
+                confirmedAutoEventDiscount: confirmedAutoEventDiscount.value,
+                confirmedCouponCode: confirmedCouponCode.value,
+                confirmedCouponDiscount: confirmedCouponDiscount.value,
+                confirmedSubtotal: confirmedSubtotal.value,
+            })
+        )
+    } catch {}
+}
+
+function loadSuccessFromStorage() {
+    try {
+        const raw = localStorage.getItem(SUCCESS_KEY)
+        if (!raw) return null
+        const saved = JSON.parse(raw)
+        if (saved?.date !== _todayYMD()) {
+            localStorage.removeItem(SUCCESS_KEY)
+            return null
+        }
+        return saved
+    } catch {
+        return null
+    }
+}
+
+function clearSuccessFromStorage() {
+    try {
+        localStorage.removeItem(SUCCESS_KEY)
+    } catch {}
+}
+
 // ── Modal 狀態 ───────────────────────────────────────
 const activeDetail = ref(null)
 const editingLineId = ref(null)
@@ -1692,6 +1796,7 @@ const editingMealLineId = ref(null)
 const successModalOpen = ref(false)
 const orderNumber = ref('')
 const submitting = ref(false)
+const demoMealInitialSel = ref({})
 
 // ── 優惠券 ──────────────────────────────────────────
 const couponCode = ref('')
@@ -1722,7 +1827,7 @@ async function loadMyCoupons() {
 async function onCouponSelect() {
     if (selectedCouponCode.value === '__coupons__') {
         selectedCouponCode.value = ''
-        window.location.href = '/coupons'
+        router.push('/coupons')
         return
     }
     if (!selectedCouponCode.value) {
@@ -1784,22 +1889,47 @@ function openAuthModal() {
     }
 }
 
-function reorder(order) {
+async function reorder(order) {
     let hasSetMeal = false
-    order.items.forEach((item) => {
+
+    for (const item of order.items ?? []) {
         const matched = products.value.find((p) => p.productName === item.productName)
-        if (!matched) return
+        if (!matched) continue
 
         if (item.isSetMeal && matched.isSetMeal && matched.setMealId) {
-            // 套餐：加入購物車並帶入基本 setMealData（id 必須有值，讓點擊後可開啟編輯選單）
-            // fixedItems / selectedOptions 留空，提示使用者點擊確認內容
             hasSetMeal = true
+            let fixedItems = []
+            let selectedOptions = []
+
+            try {
+                // 取得套餐定義，重建 fixedItems 與 selectedOptions
+                const res = await apiFetch(`/SetMeals/${matched.setMealId}`)
+                if (res.ok) {
+                    const meal = await res.json()
+                    fixedItems = (meal.items ?? []).filter((i) => !i.isOptional)
+                    const optionalItems = (meal.items ?? []).filter((i) => i.isOptional)
+                    for (const sub of item.subItems ?? []) {
+                        const opt = optionalItems.find((o) => o.dishName === sub.productName)
+                        if (opt) {
+                            selectedOptions.push({
+                                dishId: opt.dishId,
+                                dishName: opt.dishName,
+                                qty: sub.qty,
+                                groupNo: opt.optionGroupNo,
+                            })
+                        }
+                    }
+                }
+            } catch {
+                /* fallback：留空，使用者手動選 */
+            }
+
             for (let i = 0; i < item.qty; i++) {
                 store.addSetMeal(matched.productId, matched.unitPrice, item.note || '', {
                     id: matched.setMealId,
                     name: matched.productName,
-                    fixedItems: [],
-                    selectedOptions: [],
+                    fixedItems,
+                    selectedOptions,
                 })
             }
         } else {
@@ -1807,9 +1937,10 @@ function reorder(order) {
                 store.addItem(matched.productId, item.note || '')
             }
         }
-    })
+    }
+
     activeSidebarCat.value = '全部'
-    showToast(hasSetMeal ? '已加入購物車（套餐請點擊確認內容）' : '已加入購物車')
+    showToast('已加入購物車')
 }
 
 // ── Toast ────────────────────────────────────────────
@@ -1879,6 +2010,24 @@ const finalTotal = computed(() =>
     Math.max(0, total.value - couponDiscount.value - autoEventDiscount.value)
 )
 
+// ── 展示用分類（從真實 products 過濾，保留真實 productId / setMealId / 價格）──
+const DEMO_CATEGORY_KEY = '展示'
+
+// 指定展示的餐點名稱與預設數量（defaultQty 只影響 Modal 初始值）
+const DEMO_SPECS = [
+    { name: '香烤雞腿排', defaultQty: 1 },
+    { name: '全家分享餐', defaultQty: 1 },
+    { name: '奶油培根燉飯', defaultQty: 3 },
+    { name: '瑪格麗特披薩', defaultQty: 1 },
+]
+
+const demoDishes = computed(() =>
+    DEMO_SPECS.map(({ name, defaultQty }) => {
+        const p = products.value.find((p) => p.productName === name)
+        return p ? { ...p, defaultQty } : null
+    }).filter(Boolean)
+)
+
 // ── 分類 Computed ─────────────────────────────────────
 const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲料']
 
@@ -1916,7 +2065,17 @@ const sidebarCategories = computed(() => {
         return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi)
     })
 
-    return [...specials, { key: '全部', label: '全部', count: products.value.length }, ...cats]
+    return [
+        ...specials,
+        { key: '全部', label: '全部', count: products.value.length },
+        ...cats,
+        {
+            key: DEMO_CATEGORY_KEY,
+            label: DEMO_CATEGORY_KEY,
+            count: demoDishes.value.length,
+            isDividerBefore: true,
+        },
+    ]
 })
 
 const filteredProducts = computed(() => {
@@ -1958,6 +2117,9 @@ const displaySections = computed(() => {
             dishes: filteredProducts.value.filter((p) => p.categoryName === cat),
         })).filter((s) => s.dishes.length > 0)
     }
+    if (activeSidebarCat.value === DEMO_CATEGORY_KEY) {
+        return [{ key: DEMO_CATEGORY_KEY, label: DEMO_CATEGORY_KEY, dishes: demoDishes.value }]
+    }
     const dishes = filteredProducts.value.filter((p) => p.categoryName === activeSidebarCat.value)
     return dishes.length
         ? [{ key: activeSidebarCat.value, label: activeSidebarCat.value, dishes }]
@@ -1965,9 +2127,10 @@ const displaySections = computed(() => {
 })
 
 // ── 活動 API ─────────────────────────────────────────
-async function fetchActiveEvents() {
+async function fetchActiveEvents(amount = null) {
+    const effectiveAmount = amount ?? total.value
     try {
-        const res = await apiFetch(`/Orders/ActiveEvents?amount=${total.value}`)
+        const res = await apiFetch(`/Orders/ActiveEvents?amount=${effectiveAmount}`)
         if (!res.ok) return
         const data = await res.json()
         autoEvents.value = data.autoEvents ?? []
@@ -1977,12 +2140,33 @@ async function fetchActiveEvents() {
         const autoIdSet = new Set(autoEvents.value.map((e) => e.id))
         const nearAutoIdSet = new Set(nearAutoEvents.value.map((e) => e.id))
         const hasBest = !!bestAutoEvent.value
+        const bestId = bestAutoEvent.value?.id
 
-        // ── 清除失效的訪客 autoEvent toast（已登入 or 事件已失效）──
+        // ── 所有已達門檻的活動（auto + notify eligible），按 minSpend 降序排列
+        // overallBestId = 門檻最高的那個，只有它才顯示「過門檻」eligible-notify toast
+        const allEligibleSorted = [
+            ...autoEvents.value,
+            ...notifyEvents.value.filter((e) => e.isEligible),
+        ].sort((a, b) => b.minSpend - a.minSpend)
+        const overallBestId = allEligibleSorted[0]?.id ?? null
+
+        // 有 ≥ 2 個活動達標 → 需要顯示「不得合併使用」警語
+        const hasMultipleEligible = allEligibleSorted.length > 1
+
+        // ── 清除：訪客 autoEvent 的 eligible-notify，只保留 overallBest ──
         for (const [id, key] of _guestAutoKeys) {
-            if (!autoIdSet.has(id) || isLoggedIn.value) {
+            if (!autoIdSet.has(id) || isLoggedIn.value || id !== overallBestId) {
                 dismissToast(key)
                 _guestAutoKeys.delete(id)
+            }
+        }
+
+        // ── 清除：notifyEvent 的 eligible-notify，只保留 overallBest ──
+        for (const [id, key] of _eligibleNotifyKeys) {
+            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
+            if (!stillEligible || id !== overallBestId) {
+                dismissToast(key)
+                _eligibleNotifyKeys.delete(id)
             }
         }
 
@@ -1990,7 +2174,11 @@ async function fetchActiveEvents() {
         for (const [id, key] of _nearToastKeys) {
             const stillNearAuto = nearAutoIdSet.has(id)
             const stillNearNotify = notifyEvents.value.some(
-                (e) => e.id === id && !e.isEligible && e.minSpend - total.value <= 100
+                (e) =>
+                    e.id === id &&
+                    !e.isEligible &&
+                    e.minSpend - effectiveAmount > 0 &&
+                    e.minSpend - effectiveAmount <= 100
             )
             if (!stillNearAuto && !stillNearNotify) {
                 dismissToast(key)
@@ -1998,28 +2186,24 @@ async function fetchActiveEvents() {
             }
         }
 
-        // ── 清除失效的 eligible-notify toast ──
-        for (const [id, key] of _eligibleNotifyKeys) {
-            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
-            if (!stillEligible || hasBest) {
-                dismissToast(key)
-                _eligibleNotifyKeys.delete(id)
-            }
-        }
-
-        if (!hasBest && _oneEventNoteKey !== null) {
+        // ── 清除 one-event-note：無達標活動或未滿 2 個達標時移除 ──
+        if (_oneEventNoteKey !== null && (!overallBestId || !hasMultipleEligible)) {
             dismissToast(_oneEventNoteKey)
             _oneEventNoteKey = null
         }
 
-        // ── 0. 訪客：autoEvents 達門檻 → eligible-notify toast（含登入連結）──
-        if (!isLoggedIn.value) {
-            autoEvents.value.forEach((ev) => {
-                if (!_guestAutoKeys.has(ev.id)) {
-                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
-                    _guestAutoKeys.set(ev.id, key)
-                }
+        // ── 0. 訪客：只顯示 overallBest 的 eligible-notify（若為 autoEvent）──
+        if (
+            !isLoggedIn.value &&
+            hasBest &&
+            bestId === overallBestId &&
+            !_guestAutoKeys.has(bestId)
+        ) {
+            const key = pushToast(bestAutoEvent.value, {
+                persistent: true,
+                type: 'eligible-notify',
             })
+            _guestAutoKeys.set(bestId, key)
         }
 
         // ── 1. nearAutoEvents（差額≤100）→ 差額 toast ──
@@ -2031,28 +2215,29 @@ async function fetchActiveEvents() {
 
         // ── 2. notifyEvents（IsAutoDiscount=0）──
         notifyEvents.value.forEach((ev) => {
-            const gap = ev.minSpend - total.value
+            const gap = ev.minSpend - effectiveAmount
             if (ev.isEligible) {
+                // 已達門檻 → 清差額 toast
                 const nearKey = _nearToastKeys.get(ev.id)
                 if (nearKey !== undefined) {
                     dismissToast(nearKey)
                     _nearToastKeys.delete(ev.id)
                 }
-                if ((!hasBest || !isLoggedIn.value) && !_eligibleNotifyKeys.has(ev.id)) {
+                // 只有 overallBest 才顯示 eligible-notify，避免多個達標同時顯示
+                if (ev.id === overallBestId && !_eligibleNotifyKeys.has(ev.id)) {
                     _eligibleNotifyKeys.set(
                         ev.id,
                         pushToast(ev, { persistent: true, type: 'eligible-notify' })
                     )
                 }
-            } else if (gap <= 100 && !_nearToastKeys.has(ev.id)) {
+            } else if (gap > 0 && gap <= 100 && !_nearToastKeys.has(ev.id)) {
+                // 差額 > 0 且 ≤ 100 → 差額 toast
                 _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
             }
         })
 
-        // ── 3. bestAutoEvent 存在且有其他符合活動 → 「一個活動限制」提示 ──
-        const hasOtherEligible =
-            notifyEvents.value.some((e) => e.isEligible) || autoEvents.value.length > 1
-        if (hasBest && hasOtherEligible && _oneEventNoteKey === null) {
+        // ── 3. 有 ≥ 2 個活動達標 → 「每次用餐只能參加一個活動」警語 ──
+        if (overallBestId && hasMultipleEligible && _oneEventNoteKey === null) {
             _oneEventNoteKey = pushToast(
                 { id: -1, title: '', discountDescription: '' },
                 { persistent: true, type: 'one-event-note' }
@@ -2065,7 +2250,7 @@ async function fetchActiveEvents() {
 
 watch(total, (val) => {
     if (val > 0) {
-        fetchActiveEvents()
+        fetchActiveEvents(val - couponDiscount.value)
     } else {
         autoEvents.value = []
         notifyEvents.value = []
@@ -2078,6 +2263,13 @@ watch(total, (val) => {
         giftCartItem.value = null
         _lastBestEventId = null
         clearTimeout(_appliedEventToastTimer)
+    }
+})
+
+// 套用 / 清除優惠券時，以扣券後的有效金額重新判斷活動門檻
+watch(couponDiscount, (discount) => {
+    if (total.value > 0) {
+        fetchActiveEvents(total.value - discount)
     }
 })
 
@@ -2157,12 +2349,14 @@ function confirmCouponDespiteEvent() {
     couponDiscount.value = discount
     pendingCouponData.value = null
     couponEventWarnModal.value = false
+    // watch(couponDiscount) 會自動以有效金額重新判斷活動門檻
 }
 
-// 使用者取消（不套用優惠券）
+// 使用者取消（不套用優惠券）→ 還原選擇器至「選擇優惠券」
 function cancelCouponWarn() {
     pendingCouponData.value = null
     couponEventWarnModal.value = false
+    resetCoupon()
 }
 
 // ── 步驟流程 ─────────────────────────────────────────
@@ -2213,7 +2407,13 @@ async function openDetail(dish) {
         editingMealLineId.value = null
         try {
             const res = await apiFetch(`/SetMeals/${dish.setMealId}`)
-            if (res.ok) activeMeal.value = await res.json()
+            if (res.ok) {
+                const meal = await res.json()
+                activeMeal.value = meal
+                // 展示用套餐：外帶從頭選
+                const isDemo = demoDishes.value.some((d) => d.productId === dish.productId)
+                demoMealInitialSel.value = isDemo ? buildDemoInitialSel(meal, false) : {}
+            }
         } catch {
             /* 靜默 */
         }
@@ -2242,7 +2442,7 @@ async function openCartItemEdit(item) {
 
 function onDetailConfirm(dish, qty, note) {
     if (editingLineId.value !== null) {
-        store.removeLineItem(editingLineId.value)
+        store.deleteLine(editingLineId.value) // 完整刪除整條 line（含所有數量）
         for (let i = 0; i < qty; i++) store.addItem(dish.productId, note || '')
         showToast(`「${dish.productName}」已更新`)
         editingLineId.value = null
@@ -2260,6 +2460,31 @@ function buildInitialSel(lineId) {
     for (const opt of line.setMealData.selectedOptions) {
         sel[opt.groupNo ?? 0] = sel[opt.groupNo ?? 0] ?? {}
         sel[opt.groupNo ?? 0][opt.dishId] = opt.qty
+    }
+    return sel
+}
+
+// 展示用套餐預選（TakeOut 從頭選，DineIn 從尾選）
+function buildDemoInitialSel(meal, fromEnd = false) {
+    // 先依 optionGroupNo 分組，對應 SetMealSelectModal 的 optionalGroups 邏輯
+    const groupMap = {}
+    for (const item of meal.items ?? []) {
+        if (!item.isOptional) continue
+        const gno = item.optionGroupNo
+        if (!groupMap[gno]) groupMap[gno] = { groupNo: gno, pickLimit: item.pickLimit, options: [] }
+        groupMap[gno].options.push(item)
+    }
+    const sel = {}
+    for (const group of Object.values(groupMap)) {
+        const limit = group.pickLimit ?? 1
+        const opts = fromEnd ? [...group.options].reverse() : group.options
+        let picked = 0
+        sel[group.groupNo] = {}
+        for (const opt of opts) {
+            if (picked >= limit) break
+            sel[group.groupNo][opt.dishId] = 1
+            picked++
+        }
     }
     return sel
 }
@@ -2364,10 +2589,15 @@ async function submitOrder() {
             peopleNum: 1,
             isAddOrder: false,
             payMethod: 'Cash',
-            note: store.specialRequest || null,
-            pickupTime: pickupTime.value,
-            customerName: customerName.value.trim(),
-            customerPhone: customerPhone.value.trim(),
+            note: [
+                `取餐時間：${pickupTime.value}`,
+                `取餐人：${customerName.value.trim()}`,
+                `電話：${customerPhone.value.trim()}`,
+                `餐具：${needUtensils.value ? '需要' : '不需要'}`,
+                store.specialRequest ? `備註：${store.specialRequest}` : '',
+            ]
+                .filter(Boolean)
+                .join('\n'),
             memberId: currentMemberId.value,
             couponId: couponId.value,
             discountAmount: (couponOk.value ? couponDiscount.value : 0) + autoEventDiscount.value,
@@ -2385,6 +2615,7 @@ async function submitOrder() {
         confirmedPickupTime.value = pickupTime.value
         confirmedName.value = customerName.value
         confirmedPhone.value = customerPhone.value
+        confirmedNeedUtensils.value = needUtensils.value
         confirmedTotal.value = finalTotal.value
         confirmedNote.value = store.specialRequest || ''
         // 快照購物車（store.clearOrder 前存入，否則資料消失）
@@ -2423,11 +2654,13 @@ async function submitOrder() {
         // 進入成功頁並捲回頂部
         orderProgress.value = 1
         step.value = 4
+        saveSuccessToStorage() // 存入 localStorage，重整後可還原
         window.scrollTo({ top: 0, behavior: 'smooth' })
 
         // 動態進度：1.5 秒後推進到「餐點製作中」
         setTimeout(() => {
             orderProgress.value = 2
+            saveSuccessToStorage() // 更新進度到 localStorage
         }, 1500)
     } catch (err) {
         console.error(err)
@@ -2438,10 +2671,13 @@ async function submitOrder() {
 }
 
 function onSuccessClose() {
+    clearSuccessFromStorage() // 返回菜單時清除持久化成功頁
     step.value = 1
     pickupTime.value = ''
-    customerName.value = ''
-    customerPhone.value = ''
+    // 優先從會員資料還原，未登入才清空（避免下次點餐需重填）
+    customerName.value = authStore.member?.name || ''
+    customerPhone.value = authStore.member?.phone || ''
+    needUtensils.value = false
     confirmedItems.value = []
     confirmedGift.value = null
     confirmedEventTitle.value = ''
@@ -2452,6 +2688,7 @@ function onSuccessClose() {
     confirmedCouponDiscount.value = 0
     confirmedCouponMsg.value = ''
     confirmedSubtotal.value = 0
+    confirmedNeedUtensils.value = false
     orderProgress.value = 1
     window.scrollTo({ top: 0 })
 }
@@ -2512,11 +2749,16 @@ onMounted(async () => {
         const banH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 73
         document.documentElement.style.setProperty('--top-fixed', `${navH + banH}px`)
         // 手機版分類列（.mobile-cat-bar）固定在 step-banner 正下方
-        // 量測其高度供 toolbar sticky top 計算使用
+        // 量測其高度供 toolbar fixed top 計算使用
         await nextTick()
         const catBar = document.querySelector('.mobile-cat-bar')
         const catBarH = catBar ? Math.ceil(catBar.getBoundingClientRect().height) : 40
         document.documentElement.style.setProperty('--cat-bar-h', `${catBarH}px`)
+        // ----手機板---- 量測 toolbar 高度，讓 menu-sections 補上對應 padding-top
+        await nextTick()
+        const toolbar = document.querySelector('.toolbar')
+        const toolbarH = toolbar ? Math.ceil(toolbar.getBoundingClientRect().height) : 90
+        document.documentElement.style.setProperty('--toolbar-h', `${toolbarH}px`)
     }
 
     try {
@@ -2532,7 +2774,31 @@ onMounted(async () => {
 
     // 頁面載入時若購物車（Pinia 持久化）已有品項，主動觸發一次活動計算
     // watch(total) 只在值「改變」時才跑，初始值不觸發，故需在此補呼叫
-    if (total.value > 0) fetchActiveEvents()
+    if (total.value > 0) fetchActiveEvents(total.value - couponDiscount.value)
+
+    // ── 還原當日成功頁（重整後回到 step 4）──
+    const savedSuccess = loadSuccessFromStorage()
+    if (savedSuccess?.orderNumber) {
+        orderNumber.value = savedSuccess.orderNumber
+        orderProgress.value = savedSuccess.orderProgress ?? 2
+        confirmedPickupTime.value = savedSuccess.confirmedPickupTime ?? ''
+        confirmedName.value = savedSuccess.confirmedName ?? ''
+        confirmedPhone.value = savedSuccess.confirmedPhone ?? ''
+        confirmedNeedUtensils.value = savedSuccess.confirmedNeedUtensils ?? false
+        confirmedTotal.value = savedSuccess.confirmedTotal ?? 0
+        confirmedItems.value = savedSuccess.confirmedItems ?? []
+        confirmedNote.value = savedSuccess.confirmedNote ?? ''
+        confirmedGift.value = savedSuccess.confirmedGift ?? null
+        confirmedEventTitle.value = savedSuccess.confirmedEventTitle ?? ''
+        confirmedEventDesc.value = savedSuccess.confirmedEventDesc ?? ''
+        confirmedEventDiscountType.value = savedSuccess.confirmedEventDiscountType ?? ''
+        confirmedAutoEventDiscount.value = savedSuccess.confirmedAutoEventDiscount ?? 0
+        confirmedCouponCode.value = savedSuccess.confirmedCouponCode ?? ''
+        confirmedCouponDiscount.value = savedSuccess.confirmedCouponDiscount ?? 0
+        confirmedSubtotal.value = savedSuccess.confirmedSubtotal ?? 0
+        step.value = 4
+        window.scrollTo({ top: 0 })
+    }
 })
 </script>
 
@@ -3773,6 +4039,24 @@ onMounted(async () => {
 }
 
 /* 返回菜單按鈕 */
+.sp-lookup-hint-text {
+    font-size: 1rem;
+    color: rgba(208, 197, 181, 0.6);
+    margin: 0 0 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.35);
+    line-height: 1.6;
+    text-align: center;
+}
+.sp-lookup-link {
+    color: #e3c76b;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.2s;
+}
+.sp-lookup-link:hover {
+    color: #f0d87a;
+}
 .sp-back-btn {
     width: 100%;
     padding: 1rem;
@@ -3893,6 +4177,36 @@ onMounted(async () => {
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
+}
+.history-item-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.history-setmeal-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.2rem;
+    background: rgba(93, 69, 20, 0.4);
+    border: 1px solid rgba(228, 194, 133, 0.35);
+    color: #e4c285;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+.history-subitems {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding-left: 1rem;
+    border-left: 2px solid rgba(77, 70, 58, 0.4);
+    margin-left: 0.25rem;
+}
+.history-subitem {
+    font-size: 0.8rem;
+    color: rgba(208, 197, 181, 0.6);
 }
 .history-reorder-btn {
     align-self: flex-end;
@@ -4514,10 +4828,16 @@ onMounted(async () => {
 }
 
 /* ════════════════════════════════════════════════════
-   手機版 (max-width: 1100px)
+   ----手機板---- (max-width: 1100px)
    ════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
-    /* 單欄佈局，隱藏桌機側邊欄 */
+    /* ── out-wrap 手機板：padding-top 改為 navbar + step-banner 總高 ──
+       桌機版的 27px 只含 navbar；手機板 step-banner 也是 fixed，需一起算 */
+    .out-wrap {
+        padding-top: var(--top-fixed, 67px);
+    }
+
+    /* ── 單欄佈局，隱藏桌機側邊欄 ── */
     .out-layout {
         grid-template-columns: 1fr;
     }
@@ -4525,11 +4845,13 @@ onMounted(async () => {
         display: none;
     }
 
-    /* 手機版分類列：固定在 step-banner 正下方 */
+    /* ── 手機版分類列：固定在 step-banner 正下方 ── */
     .mobile-cat-bar {
         display: block;
-        position: sticky;
+        position: fixed;
         top: var(--top-fixed, 130px); /* navbar + step-banner 高度（JS 量測後注入） */
+        left: 0;
+        right: 0;   /* ← 明確指定全寬，overflow-x: auto 才能觸發 */
         z-index: 50;
         background: #180b06;
         border-bottom: 1px solid rgba(77, 70, 58, 0.3);
@@ -4537,6 +4859,7 @@ onMounted(async () => {
     .mobile-cat-tabs {
         display: flex;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* iOS 慣性滑動 */
         padding: 0.4rem 0.75rem 0.55rem;
         scrollbar-width: none;
         gap: 0;
@@ -4573,17 +4896,28 @@ onMounted(async () => {
         padding: 0.05rem 0.35rem;
     }
 
-    /* 手機版搜尋列（toolbar 內）顯示 */
+    /* ── 手機版搜尋列（toolbar 內）顯示 ── */
     .mobile-search-wrap {
         display: flex;
     }
-    /* toolbar 固定在分類列正下方：step-banner 底部 + 分類列高度 */
+    /* ----手機板---- toolbar 改 fixed，確保滾動時始終固定在分類列正下方
+       sticky 在此結構（page-scroll + overflow-x:hidden 祖先）無法可靠運作 */
     .toolbar {
+        position: fixed;
         top: calc(var(--top-fixed, 130px) + var(--cat-bar-h, 40px));
+        left: 0;
+        right: 0;
+        z-index: 40; /* 低於 mobile-cat-bar(50)，高於一般內容 */
+    }
+    /* 補上 toolbar 佔用的高度，避免餐點被 toolbar 遮住（JS 量測後注入 --toolbar-h） */
+    .menu-sections {
+        padding-top: var(--toolbar-h, 90px);
     }
     .out-menu {
         min-height: auto;
     }
+
+    /* ── 購物車 bottom sheet ── */
     .out-cart {
         position: fixed;
         inset: 0;
@@ -4625,13 +4959,196 @@ onMounted(async () => {
         pointer-events: auto;
     }
     .menu-sections {
-        padding: 0 1rem 6rem;
+        padding: 5rem 1rem 6rem;
     }
     .step-page {
         padding: 1.5rem 1rem 3rem;
     }
     .step-card {
         padding: 1.5rem;
+    }
+
+    /* ════════════════════════════════════════════════════
+       ----手機板---- 餐點卡片（對齊內用手機板樣式）
+       複製自 DineIn @media (max-width: 1100px) 餐點卡片區
+       ════════════════════════════════════════════════════ */
+
+    /* ── 列表視圖卡片 ── */
+    .dish-row {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        align-items: stretch;
+        background: #362620;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition:
+            transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.45s ease;
+    }
+    .dish-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+    .dish-row.dish-row-grid {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .dish-img {
+        width: 110px;
+        height: 90px;
+        object-fit: cover;
+        align-self: center;
+        display: block;
+        flex-shrink: 0;
+        transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dish-row:hover .dish-img {
+        transform: scale(1.05);
+    }
+    .dish-row-grid .dish-img {
+        width: 100%;
+        height: 110px;
+    }
+    .dish-img-placeholder {
+        width: 110px;
+        height: 90px;
+        align-self: center;
+        background: #2b1c16;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: rgba(208, 197, 181, 0.15);
+        font-size: 1.8rem;
+    }
+    .dish-row-grid .dish-img-placeholder {
+        width: 100%;
+        height: 110px;
+    }
+    .dish-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0.5rem 0.6rem;
+    }
+    .dish-content-grid {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: center;
+    }
+    .dish-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin: 0.4rem 0;
+    }
+    .dish-content-grid .dish-badges {
+        justify-content: center;
+    }
+    .grid-footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0 0.75rem;
+        border-top: 1px solid rgba(77, 70, 58, 0.25);
+    }
+    .grid-price {
+        color: #d5b478;
+        font-size: 1rem;
+        letter-spacing: 0.08em;
+        text-align: center;
+    }
+    .list-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 0.4rem;
+    }
+    .list-footer p {
+        margin: 0;
+        line-height: 1;
+    }
+    .qty-col {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .qty-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.8rem;
+        margin-top: auto;
+    }
+    .qty-num {
+        color: #f9ddd3;
+        width: 30px;
+        text-align: center;
+    }
+    .qty-num.active {
+        color: #e3c76b;
+    }
+
+    /* ── 網格視圖卡片 ── */
+    .dishes-wrap.grid-view {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.5rem;
+    }
+    .dish-row-grid .dish-name {
+        font-size: 0.95rem;
+        text-align: center;
+        width: 100%;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* ── 餐點名稱 ── */
+    .dish-name {
+        font-size: 1rem;
+    }
+
+    /* ── 區塊標題 ── */
+    .section-title {
+        font-family: 'Noto Serif TC', serif;
+        font-style: italic;
+        font-size: 1.4rem;
+        color: #e3c76b;
+        padding-top: 0;
+        margin-bottom: 0.6rem;
+    }
+
+    /* ── 數量按鈕 ── */
+    .qty-btn {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        width: 26px;
+        height: 26px;
+        border: 1px solid rgba(77, 70, 58, 0.7);
+        background: #2b1c16;
+        color: #f9ddd3;
+        border-radius: 0.125rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        line-height: 1;
+        transition:
+            border-color 0.3s,
+            color 0.3s;
+    }
+    .qty-btn:hover {
+        border-color: #e3c76b;
+        color: #e3c76b;
     }
 }
 
@@ -4642,6 +5159,9 @@ onMounted(async () => {
     /* step-banner 縮短左右 padding */
     .step-banner {
         padding: 0.5rem 1rem;
+        margin-top: -0.01rem;
+        border-bottom: 0;
+        margin-bottom: 0;
     }
     /* 進度圓點縮小 */
     .step-dot {

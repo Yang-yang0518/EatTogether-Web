@@ -319,13 +319,14 @@
                         <!-- 特殊分類(今日推薦/主廚特選)與一般分類(全部/套餐…)之間的分隔線 -->
                         <div
                             v-if="
-                                idx > 0 &&
+                                cat.isDividerBefore ||
+                                (idx > 0 &&
                                 !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
                                     cat.key
                                 ) &&
                                 ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
                                     sidebarCategories[idx - 1].key
-                                )
+                                ))
                             "
                             class="cat-divider"
                         ></div>
@@ -1166,7 +1167,7 @@
                 :initial-qty="
                     editingLineId !== null
                         ? (cartItemsWithDetails.find((i) => i.lineId === editingLineId)?.qty ?? 1)
-                        : 1
+                        : (activeDetail?.defaultQty ?? 1)
                 "
                 :initial-note="
                     editingLineId !== null
@@ -1192,8 +1193,8 @@
                     ? (store.lines.find((l) => l.lineId === editingMealLineId)?.note ?? '')
                     : ''
             "
-            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : {}"
-            @close="(activeMeal = null)((editingMealLineId = null))"
+            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : demoMealInitialSel"
+            @close="((activeMeal = null), (editingMealLineId = null), (demoMealInitialSel = {}))"
             @confirm="onSetMealConfirm"
         />
 
@@ -1282,6 +1283,7 @@ const editingLineId = ref(null) // null = 新增模式，有值 = 編輯模式
 // ── 套餐選項 Modal ──────────────────────────────────────────────
 const activeMeal = ref(null) // 目前開啟的套餐資料（API 回傳）
 const editingMealLineId = ref(null) // 套餐編輯模式的 lineId
+const demoMealInitialSel = ref({})
 const successModalOpen = ref(false)
 const orderNumber = ref('')
 const submitting = ref(false)
@@ -1433,9 +1435,11 @@ function confirmCouponDespiteEvent() {
 }
 
 // 使用者取消（不套用優惠券）
+// 使用者取消（不套用優惠券）→ 還原選擇器至「選擇優惠券」
 function cancelCouponWarn() {
     pendingCouponData.value = null
     couponEventWarnModal.value = false
+    resetCoupon()
 }
 
 // ── 開啟全域登入 Modal（Bootstrap #authModal）
@@ -1543,6 +1547,23 @@ function resolveImage(url) {
     return `/${path.replace(/^\//, '')}`
 }
 
+// ── 展示用分類（從真實 products 過濾，保留真實 productId / setMealId / 價格）──
+const DEMO_CATEGORY_KEY = '展示'
+const DEMO_SPECS = [
+    { name: '香烤雞腿排',   defaultQty: 1 },
+    { name: '全家分享餐',   defaultQty: 1 },
+    { name: '奶油培根燉飯', defaultQty: 3 },
+    { name: '瑪格麗特披薩', defaultQty: 1 },
+]
+const demoDishes = computed(() =>
+    DEMO_SPECS
+        .map(({ name, defaultQty }) => {
+            const p = products.value.find((p) => p.productName === name)
+            return p ? { ...p, defaultQty } : null
+        })
+        .filter(Boolean)
+)
+
 // 一般分類排序（特殊的今日推薦/主廚特選不在此列）
 const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲料']
 
@@ -1587,7 +1608,12 @@ const sidebarCategories = computed(() => {
     // 全部：放在分隔線後、一般分類前
     const allEntry = { key: '全部', label: '全部', count: products.value.length }
 
-    return [...specials, allEntry, ...cats]
+    return [
+        ...specials,
+        allEntry,
+        ...cats,
+        { key: DEMO_CATEGORY_KEY, label: DEMO_CATEGORY_KEY, count: demoDishes.value.length, isDividerBefore: true },
+    ]
 })
 
 const filteredProducts = computed(() => {
@@ -1637,6 +1663,10 @@ const displaySections = computed(() => {
             label: cat,
             dishes: filteredProducts.value.filter((p) => p.categoryName === cat),
         })).filter((s) => s.dishes.length > 0)
+    }
+    // 展示分類
+    if (activeSidebarCat.value === DEMO_CATEGORY_KEY) {
+        return [{ key: DEMO_CATEGORY_KEY, label: DEMO_CATEGORY_KEY, dishes: demoDishes.value }]
     }
     // 一般分類
     const dishes = filteredProducts.value.filter((p) => p.categoryName === activeSidebarCat.value)
@@ -1725,20 +1755,45 @@ async function fetchActiveEvents() {
         const autoIdSet = new Set(autoEvents.value.map((e) => e.id))
         const nearAutoIdSet = new Set(nearAutoEvents.value.map((e) => e.id))
         const hasBest = !!bestAutoEvent.value
+        const bestId = bestAutoEvent.value?.id
 
-        // ── 清除失效的訪客 autoEvent toast（已登入 or 事件已失效）──
+        // ── 所有已達門檻的活動（auto + notify eligible），按 minSpend 降序排列
+        // overallBestId = 門檻最高的那個，只有它才顯示「過門檻」eligible-notify toast
+        const allEligibleSorted = [
+            ...autoEvents.value,
+            ...notifyEvents.value.filter((e) => e.isEligible),
+        ].sort((a, b) => b.minSpend - a.minSpend)
+        const overallBestId = allEligibleSorted[0]?.id ?? null
+
+        // 有 ≥ 2 個活動達標 → 需要顯示「不得合併使用」警語
+        const hasMultipleEligible = allEligibleSorted.length > 1
+
+        // ── 清除：訪客 autoEvent 的 eligible-notify，只保留 overallBest ──
         for (const [id, key] of _guestAutoKeys) {
-            if (!autoIdSet.has(id) || isLoggedIn.value) {
+            if (!autoIdSet.has(id) || isLoggedIn.value || id !== overallBestId) {
                 dismissToast(key)
                 _guestAutoKeys.delete(id)
             }
         }
 
-        // ── 清除失效的差額 toast（事件已達門檻 or 差額回到>100）──
+        // ── 清除：notifyEvent 的 eligible-notify，只保留 overallBest ──
+        for (const [id, key] of _eligibleNotifyKeys) {
+            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
+            if (!stillEligible || id !== overallBestId) {
+                dismissToast(key)
+                _eligibleNotifyKeys.delete(id)
+            }
+        }
+
+        // ── 清除失效的差額 toast（事件不再差額≤100）──
         for (const [id, key] of _nearToastKeys) {
             const stillNearAuto = nearAutoIdSet.has(id)
             const stillNearNotify = notifyEvents.value.some(
-                (e) => e.id === id && !e.isEligible && e.minSpend - total.value <= 100
+                (e) =>
+                    e.id === id &&
+                    !e.isEligible &&
+                    e.minSpend - total.value > 0 &&
+                    e.minSpend - total.value <= 100
             )
             if (!stillNearAuto && !stillNearNotify) {
                 dismissToast(key)
@@ -1746,36 +1801,30 @@ async function fetchActiveEvents() {
             }
         }
 
-        // ── 清除失效的 eligible-notify toast（事件已不符合 or bestAutoEvent 出現）──
-        for (const [id, key] of _eligibleNotifyKeys) {
-            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
-            if (!stillEligible || hasBest) {
-                dismissToast(key)
-                _eligibleNotifyKeys.delete(id)
-            }
-        }
-
-        // ── 若 bestAutoEvent 消失，清除「一個活動限制」提示 ──
-        if (!hasBest && _oneEventNoteKey !== null) {
+        // ── 清除 one-event-note：無達標活動或未滿 2 個達標時移除 ──
+        if (_oneEventNoteKey !== null && (!overallBestId || !hasMultipleEligible)) {
             dismissToast(_oneEventNoteKey)
             _oneEventNoteKey = null
         }
 
-        // ── 0. 訪客：autoEvents 達門檻 → eligible-notify toast（取代 inline 卡片）──
-        if (!isLoggedIn.value) {
-            autoEvents.value.forEach((ev) => {
-                if (!_guestAutoKeys.has(ev.id)) {
-                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
-                    _guestAutoKeys.set(ev.id, key)
-                }
+        // ── 0. 訪客：只顯示 overallBest 的 eligible-notify（若為 autoEvent）──
+        if (
+            !isLoggedIn.value &&
+            hasBest &&
+            bestId === overallBestId &&
+            !_guestAutoKeys.has(bestId)
+        ) {
+            const key = pushToast(bestAutoEvent.value, {
+                persistent: true,
+                type: 'eligible-notify',
             })
+            _guestAutoKeys.set(bestId, key)
         }
 
-        // ── 1. nearAutoEvents（IsAutoDiscount=1，差額≤100）→ 差額 toast ──
+        // ── 1. nearAutoEvents（差額≤100）→ 差額 toast ──
         nearAutoEvents.value.forEach((ev) => {
             if (!_nearToastKeys.has(ev.id)) {
-                const key = pushToast(ev, { persistent: true, type: 'near' })
-                _nearToastKeys.set(ev.id, key)
+                _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
             }
         })
 
@@ -1783,28 +1832,27 @@ async function fetchActiveEvents() {
         notifyEvents.value.forEach((ev) => {
             const gap = ev.minSpend - total.value
             if (ev.isEligible) {
-                // 達門檻：dismiss 其差額 toast
+                // 已達門檻 → 清差額 toast
                 const nearKey = _nearToastKeys.get(ev.id)
                 if (nearKey !== undefined) {
                     dismissToast(nearKey)
                     _nearToastKeys.delete(ev.id)
                 }
-                // 無 bestAutoEvent 才顯示「恭喜」toast
-                if (!hasBest && !_eligibleNotifyKeys.has(ev.id)) {
-                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
-                    _eligibleNotifyKeys.set(ev.id, key)
+                // 只有 overallBest 才顯示 eligible-notify，避免多個達標同時顯示
+                if (ev.id === overallBestId && !_eligibleNotifyKeys.has(ev.id)) {
+                    _eligibleNotifyKeys.set(
+                        ev.id,
+                        pushToast(ev, { persistent: true, type: 'eligible-notify' })
+                    )
                 }
-            } else if (gap <= 100 && !_nearToastKeys.has(ev.id)) {
-                // 差額≤100：差額 toast
-                const key = pushToast(ev, { persistent: true, type: 'near' })
-                _nearToastKeys.set(ev.id, key)
+            } else if (gap > 0 && gap <= 100 && !_nearToastKeys.has(ev.id)) {
+                // 差額 > 0 且 ≤ 100 → 差額 toast（防止負值）
+                _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
             }
         })
 
-        // ── 3. bestAutoEvent 存在且有其他符合活動 → 「一個活動限制」提示（僅一次）──
-        const hasOtherEligible =
-            notifyEvents.value.some((e) => e.isEligible) || autoEvents.value.length > 1
-        if (hasBest && hasOtherEligible && _oneEventNoteKey === null) {
+        // ── 3. 有 ≥ 2 個活動達標 → 「每次用餐只能參加一個活動」警語 ──
+        if (overallBestId && hasMultipleEligible && _oneEventNoteKey === null) {
             _oneEventNoteKey = pushToast(
                 { id: -1, title: '', discountDescription: '' },
                 { persistent: true, type: 'one-event-note' }
@@ -1889,7 +1937,13 @@ async function openDetail(dish) {
         editingMealLineId.value = null
         try {
             const res = await apiFetch(`/SetMeals/${dish.setMealId}`)
-            if (res.ok) activeMeal.value = await res.json()
+            if (res.ok) {
+                const meal = await res.json()
+                activeMeal.value = meal
+                // 展示用套餐：內用從尾選
+                const isDemo = demoDishes.value.some((d) => d.productId === dish.productId)
+                demoMealInitialSel.value = isDemo ? buildDemoInitialSel(meal, true) : {}
+            }
         } catch {
             /* 靜默 */
         }
@@ -1920,8 +1974,8 @@ async function openCartItemEdit(item) {
 
 function onDetailConfirm(dish, qty, note) {
     if (editingLineId.value !== null) {
-        // ── 編輯模式：先移除舊 line，再以新 qty/note 加入（自動合併同名 line）──
-        store.removeLineItem(editingLineId.value)
+        // ── 編輯模式：先完整刪除舊 line，再以新 qty/note 加入（自動合併同名 line）──
+        store.deleteLine(editingLineId.value)
         for (let i = 0; i < qty; i++) store.addItem(dish.productId, note || '')
         showToast(`「${dish.productName}」已更新`)
         editingLineId.value = null
@@ -1943,6 +1997,30 @@ function buildInitialSel(lineId) {
         // 先存在 dishId key 下，SetMealSelectModal 的 watch 會在 meal 載入後處理
         sel[opt.groupNo ?? 0] = sel[opt.groupNo ?? 0] ?? {}
         sel[opt.groupNo ?? 0][opt.dishId] = opt.qty
+    }
+    return sel
+}
+
+// 展示用套餐預選（TakeOut 從頭選，DineIn 從尾選）
+function buildDemoInitialSel(meal, fromEnd = false) {
+    const groupMap = {}
+    for (const item of meal.items ?? []) {
+        if (!item.isOptional) continue
+        const gno = item.optionGroupNo
+        if (!groupMap[gno]) groupMap[gno] = { groupNo: gno, pickLimit: item.pickLimit, options: [] }
+        groupMap[gno].options.push(item)
+    }
+    const sel = {}
+    for (const group of Object.values(groupMap)) {
+        const limit = group.pickLimit ?? 1
+        const opts = fromEnd ? [...group.options].reverse() : group.options
+        let picked = 0
+        sel[group.groupNo] = {}
+        for (const opt of opts) {
+            if (picked >= limit) break
+            sel[group.groupNo][opt.dishId] = 1
+            picked++
+        }
     }
     return sel
 }

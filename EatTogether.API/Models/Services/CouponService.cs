@@ -12,17 +12,20 @@ namespace EatTogether.Models.Services
         private readonly IMemberCouponRepository _memberCouponRepo;
         private readonly IMemberRepository       _memberRepo;
 		private readonly INotificationService    _notifyService;
+        private readonly IPreOrderRepository     _preOrderRepo;
 
 		public CouponService(
             ICouponRepository       couponRepo,
             IMemberCouponRepository memberCouponRepo,
             IMemberRepository       memberRepo,
-            INotificationService    notifyService)
+            INotificationService    notifyService,
+            IPreOrderRepository     preOrderRepo)
         {
             _couponRepo       = couponRepo;
             _memberCouponRepo = memberCouponRepo;
             _memberRepo       = memberRepo;
 			_notifyService    = notifyService;
+            _preOrderRepo     = preOrderRepo;
 		}
 
         // ─── 取得可領取優惠券列表（公開，含 IsClaimed 標記）─────────────
@@ -141,6 +144,10 @@ namespace EatTogether.Models.Services
             // 必須未使用
             if (mc.IsUsed)
                 return fail("此優惠券已使用過");
+
+            // 已套用至當日進行中訂單（含製作中）→ 同樣不能再用
+            if (await _preOrderRepo.IsCouponInActiveTodayOrderAsync(coupon.Id, memberId.Value))
+                return fail("此優惠券已套用於進行中的訂單，如需重新使用請先取消該筆訂單");
 
             var discount = coupon.DiscountType == 0
                 ? coupon.DiscountValue

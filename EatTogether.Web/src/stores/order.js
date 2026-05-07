@@ -1,6 +1,34 @@
 import { defineStore } from 'pinia';
 import { ref, reactive, computed } from 'vue';
 
+// ── localStorage 持久化（僅存外帶購物車，同日期才還原）──
+const STORAGE_KEY = 'takeout_cart_v1'
+const todayYMD = () => new Date().toISOString().slice(0, 10)
+
+function saveToStorage(lines, seq, specialRequest) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      date: todayYMD(),
+      _seq: seq,
+      lines: JSON.parse(JSON.stringify(lines)),
+      specialRequest,
+    }))
+  } catch {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const saved = JSON.parse(raw)
+    if (saved?.date !== todayYMD()) {
+      localStorage.removeItem(STORAGE_KEY)
+      return null
+    }
+    return saved
+  } catch { return null }
+}
+
 export const useOrderStore = defineStore('order', () => {
   // 每條 line：{ lineId, productId, qty, note }
   // 相同 productId + 相同 note → 合併成同一條
@@ -9,6 +37,16 @@ export const useOrderStore = defineStore('order', () => {
 
   const pax = ref(0);
   const specialRequest = ref('');
+
+  // ── 從 localStorage 還原當日購物車 ─────────────────────
+  {
+    const saved = loadFromStorage()
+    if (saved?.lines?.length) {
+      saved.lines.forEach(l => lines.push(l))
+      _seq = saved._seq ?? lines.reduce((m, l) => Math.max(m, l.lineId ?? 0), 0)
+      if (saved.specialRequest) specialRequest.value = saved.specialRequest
+    }
+  }
 
   // ── computed ──────────────────────────────────────────────
   const totalItems = computed(() => lines.reduce((s, l) => s + l.qty, 0));
@@ -31,12 +69,13 @@ export const useOrderStore = defineStore('order', () => {
    */
   function addItem(productId, note = '') {
     const n = note?.trim() ?? '';
-    const existing = lines.find(l => l.productId === productId && l.note === n);
+    const existing = lines.find(l => l.productId === productId && l.note === n && !l.isSetMeal);
     if (existing) {
       existing.qty++;
     } else {
       lines.push({ lineId: ++_seq, productId, qty: 1, note: n });
     }
+    saveToStorage(lines, _seq, specialRequest.value)
   }
 
   /**
@@ -53,6 +92,7 @@ export const useOrderStore = defineStore('order', () => {
       const idx = lines.indexOf(target);
       lines.splice(idx, 1);
     }
+    saveToStorage(lines, _seq, specialRequest.value)
   }
 
   /**
@@ -63,6 +103,17 @@ export const useOrderStore = defineStore('order', () => {
     if (idx === -1) return;
     lines[idx].qty--;
     if (lines[idx].qty <= 0) lines.splice(idx, 1);
+    saveToStorage(lines, _seq, specialRequest.value)
+  }
+
+  /**
+   * 編輯用：依 lineId 完整刪除整條 line（不論數量）。
+   */
+  function deleteLine(lineId) {
+    const idx = lines.findIndex(l => l.lineId === lineId);
+    if (idx === -1) return;
+    lines.splice(idx, 1);
+    saveToStorage(lines, _seq, specialRequest.value)
   }
 
   /**
@@ -71,6 +122,7 @@ export const useOrderStore = defineStore('order', () => {
   function addLineItem(lineId) {
     const line = lines.find(l => l.lineId === lineId);
     if (line) line.qty++;
+    saveToStorage(lines, _seq, specialRequest.value)
   }
 
   /**
@@ -90,6 +142,7 @@ export const useOrderStore = defineStore('order', () => {
       unitPrice,
       setMealData: { ...setMealData },
     });
+    saveToStorage(lines, _seq, specialRequest.value)
   }
 
   /**
@@ -101,18 +154,20 @@ export const useOrderStore = defineStore('order', () => {
     line.unitPrice   = unitPrice;
     line.note        = note?.trim() ?? '';
     line.setMealData = { ...setMealData };
+    saveToStorage(lines, _seq, specialRequest.value)
   }
 
   function clearOrder() {
     lines.splice(0, lines.length);
     pax.value = 0;
     specialRequest.value = '';
+    try { localStorage.removeItem(STORAGE_KEY) } catch {}
   }
 
   return {
     lines, pax, specialRequest,
     cart, cartItems, totalItems,
-    addItem, removeItem, removeLineItem, addLineItem,
+    addItem, removeItem, removeLineItem, addLineItem, deleteLine,
     addSetMeal, updateSetMealLine,
     clearOrder,
   };
