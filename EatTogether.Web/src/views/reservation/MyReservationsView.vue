@@ -170,14 +170,19 @@ async function confirmCancel() {
   if (!cancelTarget.value) return
   cancelling.value = true
   try {
-    const res = await apiFetch(`/Reservations/${cancelTarget.value.id}/Cancel`, { method: 'PUT' })
+    const res = await apiFetch(`/Reservations/${cancelTarget.value.id}/Cancel`, {
+      method: 'PUT',
+      body: JSON.stringify({})
+    })
     if (res.ok) {
       show('訂位已取消', 'success')
       cancelTarget.value.status = 2
       cancelTarget.value.statusText = '已取消'
       cancelTarget.value = null
     } else {
-      show('取消失敗，請稍後再試', 'error')
+      const err = await res.json().catch(() => ({}))
+      show(err.message || '取消失敗，請稍後再試', 'error')
+      cancelTarget.value = null
     }
   } catch {
     show('網路錯誤，請稍後再試', 'error')

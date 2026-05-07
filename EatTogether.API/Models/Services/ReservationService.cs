@@ -125,17 +125,21 @@ namespace EatTogether.Models.Services
                 });
             }
 
-			// 建立會員訂位確認通知
+			// 建立會員訂位確認通知（失敗不影響訂位結果）
 			if (memberId.HasValue)
             {
-				await _notifyService.SendToMemberAsync(
-		            memberId: memberId.Value,
-		            type: "RESERVATION_CONFIRM",
-		            referenceType: "Reservation",
-		            referenceId: reservationId,
-					title: $"訂位確認｜{resDate:M/d} {resDate:HH:mm} {total} 位，我們已為您保留座位",
-	                message: $"訂位單號：{bookingNumber}"
-				);
+				try
+				{
+					await _notifyService.SendToMemberAsync(
+			            memberId: memberId.Value,
+			            type: "RESERVATION_CONFIRM",
+			            referenceType: "Reservation",
+			            referenceId: reservationId,
+						title: $"訂位確認｜{resDate:M/d} {resDate:HH:mm} {total} 位，我們已為您保留座位",
+		                message: $"訂位單號：{bookingNumber}"
+					);
+				}
+				catch { /* 通知失敗不影響訂位流程 */ }
 			}
 
 			return Result<string>.Success(bookingNumber);
@@ -182,17 +186,21 @@ namespace EatTogether.Models.Services
                 });
             }
 
-			// 建立會員訂位取消通知
+			// 建立會員訂位取消通知（失敗不影響取消結果）
 			if (detail.MemberId.HasValue)
 			{
-				await _notifyService.SendToMemberAsync(
-					memberId: detail.MemberId.Value,
-					type: "RESERVATION_CANCEL",
-					referenceType: "Reservation",
-					referenceId: detail.Id,
-					title: $"訂位已取消｜{detail.ReservationDate:M/d} {detail.ReservationDate:HH:mm} {detail.AdultsCount + detail.ChildrenCount} 位",
-					message: $"訂位單號：{detail.BookingNumber}"
-				);
+				try
+				{
+					await _notifyService.SendToMemberAsync(
+						memberId: detail.MemberId.Value,
+						type: "RESERVATION_CANCEL",
+						referenceType: "Reservation",
+						referenceId: detail.Id,
+						title: $"訂位已取消｜{detail.ReservationDate:M/d} {detail.ReservationDate:HH:mm} {detail.AdultsCount + detail.ChildrenCount} 位",
+						message: $"訂位單號：{detail.BookingNumber}"
+					);
+				}
+				catch { /* 通知失敗不影響取消流程 */ }
 			}
 
 
