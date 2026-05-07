@@ -1,12 +1,13 @@
 namespace EatTogether.API.Models.DTOs
 {
 	/// <summary>
-	/// 刪除帳號請求 DTO。
-	/// 一般帳號（HAS_PASSWORD）必須提供 Password；
-	/// 純 Google 帳號（EXTERNAL_LOGIN_NO_PASSWORD）可傳 null。
+	/// 申請刪除帳號請求 DTO (第一步)
 	/// </summary>
 	public class DeleteAccountDto
 	{
+		/// <summary>
+		/// 一般帳號的密碼 (有密碼的帳號必填)
+		/// </summary>
 		public string? Password { get; set; }
 	}
 }

@@ -5,6 +5,7 @@ import { validateState, clearState, getRedirectPath } from '@/utils/googleOAuth.
 import { useAuthStore } from '@/stores/auth.js'
 import { useToast } from '@/composables/useToast.js'
 import apiFetch from '@/utils/apiFetch.js'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -53,10 +54,5 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="d-flex flex-column align-items-center justify-content-center min-vh-100">
-        <div class="spinner-border" style="color: var(--eat-primary)" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <p class="eat-body-muted mt-3">正在完成 Google 登入...</p>
-    </div>
+    <LoadingSpinner :fullscreen="true" message="正在完成 Google 登入..." />
 </template>

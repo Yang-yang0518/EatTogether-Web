@@ -1,6 +1,6 @@
 <template>
     <!-- 如果有傳 to，渲染成 RouterLink；否則渲染成 button 或 a -->
-    <RouterLink v-if="to" :to="to" :class="buttonClass">
+    <RouterLink v-if="to" :to="to" :class="buttonClass" v-bind="$attrs">
         <!-- 讀取中 spinner -->
         <span
             v-if="loading"
@@ -17,6 +17,7 @@
         :rel="target === '_blank' ? 'noopener noreferrer' : undefined"
         :role="loading ? 'status' : undefined"
         :class="buttonClass"
+        v-bind="$attrs"
     >
         <span
             v-if="loading"
@@ -34,6 +35,7 @@
         :class="buttonClass"
         :role="loading ? 'status' : undefined"
         @click="emit('click', $event)"
+        v-bind="$attrs"
     >
         <span
             v-if="loading"
@@ -48,6 +50,8 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps({
     /**

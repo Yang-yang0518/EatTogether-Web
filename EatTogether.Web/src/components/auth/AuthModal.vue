@@ -389,7 +389,7 @@ onMounted(() => {
         aria-hidden="true"
     >
         <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down modal-eat-dialog">
-            <div class="modal-content auth-modal-content">
+            <div class="modal-content modal-eat-content">
                 <button
                     type="button"
                     class="btn-close btn-close-white btn-sm me-2 mt-2 ms-auto"
@@ -397,12 +397,9 @@ onMounted(() => {
                     aria-label="關閉"
                 ></button>
                 <!-- Header -->
-                <div class="modal-header justify-content-between border-0 px-4 py-0">
+                <div class="modal-header border-0 px-4 py-0">
                     <div class="w-100 d-flex justify-content-center">
-                        <h2
-                            id="authModalLabel"
-                            class="eat-h3 fw-bolder fst-normal text-center fs-5 mb-0"
-                        >
+                        <h2 id="authModalLabel" class="eat-h3 fw-bolder fst-normal fs-5 mb-0">
                             {{ activeTab === 'login' ? '會員登入' : '註冊會員' }}
                         </h2>
                     </div>
@@ -452,7 +449,9 @@ onMounted(() => {
                                     使用 Google 登入
                                 </Button>
 
-                                <div class="auth-divider-content feather-divider my-3"></div>
+                                <div
+                                    class="auth-divider-content feather-divider on-container my-3"
+                                ></div>
 
                                 <!-- 通用錯誤橫幅 -->
                                 <div v-if="loginFormError" class="auth-error-banner" role="alert">
@@ -598,7 +597,7 @@ onMounted(() => {
                             <!-- 註冊表單 -->
                             <template v-else>
                                 <Button
-                                    variant="primary"
+                                    variant="secondary"
                                     class="btn-eat-md mb-2"
                                     @click="handleGoogleLogin"
                                 >
@@ -634,6 +633,7 @@ onMounted(() => {
                                         :aria-invalid="regAccountError ? 'true' : undefined"
                                     />
                                     <FormErrorMessage
+                                        id="reg-account-error"
                                         :show="!!regAccountError"
                                         :message="regAccountError"
                                     />
@@ -659,6 +659,7 @@ onMounted(() => {
                                         :aria-invalid="regNameError ? 'true' : undefined"
                                     />
                                     <FormErrorMessage
+                                        id="reg-name-error"
                                         :show="!!regNameError"
                                         :message="regNameError"
                                     />
@@ -684,6 +685,7 @@ onMounted(() => {
                                         :aria-invalid="regEmailError ? 'true' : undefined"
                                     />
                                     <FormErrorMessage
+                                        id="reg-email-error"
                                         :show="!!regEmailError"
                                         :message="regEmailError"
                                     />
@@ -725,6 +727,7 @@ onMounted(() => {
                                     </div>
 
                                     <FormErrorMessage
+                                        id="reg-password-error"
                                         :show="!!regPasswordError"
                                         :message="regPasswordError"
                                     />
@@ -776,6 +779,7 @@ onMounted(() => {
                                         </button>
                                     </div>
                                     <FormErrorMessage
+                                        id="reg-confirm-password-error"
                                         :show="!!regConfirmPasswordError"
                                         :message="regConfirmPasswordError"
                                     />

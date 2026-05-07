@@ -32,11 +32,11 @@ onMounted(() => {
                     aria-label="關閉"
                 ></button>
 
-                <div class="modal-header justify-content-between border-0 px-4 py-0">
+                <div class="modal-header border-0 px-4 py-0">
                     <div class="w-100 d-flex justify-content-center">
                         <h2
                             id="resendResetPasswordModalLabel"
-                            class="eat-h3 fw-bolder fst-normal text-center fs-5 mb-0"
+                            class="eat-h3 fw-bolder fst-normal fs-5 mb-0"
                         >
                             {{ status === 'form' ? '重新申請重設密碼' : '密碼重設信已寄出' }}
                         </h2>
@@ -68,7 +68,11 @@ onMounted(() => {
                                 :aria-describedby="emailError ? 'rr-modal-email-error' : undefined"
                                 :aria-invalid="emailError ? 'true' : undefined"
                             />
-                            <FormErrorMessage :show="!!emailError" :message="emailError" />
+                            <FormErrorMessage
+                                id="rr-modal-email-error"
+                                :show="!!emailError"
+                                :message="emailError"
+                            />
                         </div>
 
                         <Button

@@ -114,8 +114,8 @@ onMounted(async () => {
                             <div class="icon-eat icon-eat--success mb-3">
                                 <i class="bi bi-check-lg"></i>
                             </div>
-                            <h1 class="eat-h2 mb-2">Email 驗證成功！</h1>
-                            <p class="eat-body mb-1">您的帳號已完成驗證，歡迎加入義起吃。</p>
+                            <h1 class="eat-h3 fw-bolder fst-normal mb-2">Email 驗證成功！</h1>
+                            <p class="eat-body-muted mb-3">您的帳號已完成驗證，歡迎加入義起吃</p>
                             <p class="eat-body-muted mb-0">
                                 {{ countdown }} 秒後自動導向首頁並開啟登入...
                             </p>
@@ -127,8 +127,10 @@ onMounted(async () => {
                                 <div class="icon-eat icon-eat--error mb-3">
                                     <i class="bi bi-x-lg"></i>
                                 </div>
-                                <h1 class="eat-h2 mb-2">驗證連結無效或已過期</h1>
-                                <p class="eat-body mb-0">請輸入您的 Email，重新寄送驗證信。</p>
+                                <h1 class="eat-h3 fw-bolder fst-normal mb-2">
+                                    驗證連結無效或已過期
+                                </h1>
+                                <p class="eat-body-muted mb-3">請輸入您的 Email，重新寄送驗證信</p>
                             </div>
 
                             <!-- 重寄表單 -->
@@ -169,7 +171,7 @@ onMounted(async () => {
                             <!-- 重寄結果 -->
                             <div v-else class="text-center pt-2">
                                 <p
-                                    class="eat-body mb-0"
+                                    class="eat-body-muted mb-0"
                                     :style="
                                         resendErrorCode === 'already_confirmed'
                                             ? 'color: var(--eat-primary)'

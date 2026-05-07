@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { Modal } from 'bootstrap'
 import { useToast } from '@/composables/useToast.js'
 import apiFetch from '@/utils/apiFetch.js'
+import Button from '@/components/common/Button.vue'
 import FormErrorMessage from '@/components/common/FormErrorMessage.vue'
 
 const emit = defineEmits(['success'])
@@ -33,7 +34,7 @@ function resetForm() {
     isSubmitting.value = false
 }
 
-async function submit() {
+async function handleSubmit() {
     currentPasswordError.value = ''
     newPasswordError.value = ''
     confirmNewPasswordError.value = ''
@@ -88,7 +89,7 @@ async function submit() {
             }
         }
     } catch (err) {
-        if (import.meta.env.DEV) console.error('[ChangePasswordModal.submit]', err)
+        if (import.meta.env.DEV) console.error('[ChangePasswordModal.handleSubmit]', err)
     } finally {
         isSubmitting.value = false
     }
@@ -110,16 +111,19 @@ onUnmounted(() => {
 
 <template>
     <div id="changePasswordModal" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-eat-dialog">
+        <div class="modal-dialog modal-dialog-centered modal-eat-dialog modal-fullscreen-sm-down">
             <div class="modal-content modal-eat-content">
                 <button
                     type="button"
-                    class="btn-close btn-close-white btn-sm ms-auto me-2 mt-2"
+                    class="btn-close btn-close-white btn-sm me-2 mt-2 ms-auto"
                     data-bs-dismiss="modal"
                     aria-label="關閉"
                 ></button>
-                <div class="modal-header border-0 px-4 py-3">
-                    <h5 class="eat-h3 fst-normal fw-bold fs-5 mb-0">修改密碼</h5>
+
+                <div class="modal-header border-0 px-4 py-0">
+                    <div class="w-100 d-flex justify-content-center">
+                        <h5 class="eat-h3 fw-bolder fst-normal fs-5 mb-0">修改密碼</h5>
+                    </div>
                 </div>
                 <div class="modal-body px-4 pb-4">
                     <div class="form-eat d-flex flex-column gap-3">
@@ -201,15 +205,14 @@ onUnmounted(() => {
                                 :show="!!confirmNewPasswordError"
                             />
                         </div>
-                        <button
-                            type="button"
-                            class="btn-eat-primary mt-2"
-                            :disabled="isSubmitting"
-                            @click="submit"
+                        <Button
+                            variant="primary"
+                            class="btn-eat-md mt-2"
+                            :loading="isSubmitting"
+                            @click="handleSubmit"
                         >
-                            <span v-if="isSubmitting" class="spinner-border-eat spinner-sm"></span>
                             {{ isSubmitting ? '修改中...' : '確認修改' }}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>

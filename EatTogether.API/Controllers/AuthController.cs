@@ -47,7 +47,7 @@ namespace EatTogether.API.Controllers
 						Message = "帳號已停權，請聯繫客服",
 						ErrorCode = "account_blacklisted"
 					}),
-					"account_deleted" => Ok(new ErrorViewModel
+					"account_deleted" => Unauthorized(new ErrorViewModel
 					{
 						Message = "此帳號已停用",
 						ErrorCode = "account_deleted"

@@ -57,10 +57,35 @@ namespace EatTogether.API.Controllers
 			{
 				return result.ErrorMessage switch
 				{
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => BadRequest(new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
+					"email_not_confirmed" => BadRequest(new ErrorViewModel
+					{
+						Message = "請先驗證您的信箱",
+						ErrorCode = "email_not_confirmed"
+					}),
 					"invalid_birth_date" => BadRequest(new ErrorViewModel
 					{
 						Message = "生日不可為未來日期",
 						ErrorCode = "invalid_birth_date"
+					}),
+					"birth_date_locked" => BadRequest(new ErrorViewModel
+					{
+						Message = "生日設定後無法修改",
+						ErrorCode = "birth_date_locked"
+					}),
+					"update_failed" => BadRequest(new ErrorViewModel
+					{
+						Message = "更新失敗",
+						ErrorCode = "update_failed"
 					}),
 					_ => BadRequest(new ErrorViewModel { Message = "更新失敗，請稍後再試" })
 				};
@@ -91,6 +116,21 @@ namespace EatTogether.API.Controllers
 			{
 				return result.ErrorMessage switch
 				{
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => BadRequest(new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
+					"email_not_confirmed" => BadRequest(new ErrorViewModel
+					{
+						Message = "請先驗證您的信箱",
+						ErrorCode = "email_not_confirmed"
+					}),
 					"invalid_format" => BadRequest(new ErrorViewModel
 					{
 						Message = "僅支援 JPG、PNG、WebP 格式",
@@ -125,6 +165,21 @@ namespace EatTogether.API.Controllers
 			{
 				return result.ErrorMessage switch
 				{
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => BadRequest(new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
+					"email_not_confirmed" => BadRequest(new ErrorViewModel
+					{
+						Message = "請先驗證您的信箱",
+						ErrorCode = "email_not_confirmed"
+					}),
 					"no_password" => BadRequest(new ErrorViewModel
 					{
 						Message = "此帳號使用 Google 登入，無法修改密碼",
@@ -159,6 +214,21 @@ namespace EatTogether.API.Controllers
 			{
 				return result.ErrorMessage switch
 				{
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => BadRequest(new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
+					"email_not_confirmed" => BadRequest(new ErrorViewModel
+					{
+						Message = "請先驗證您的信箱",
+						ErrorCode = "email_not_confirmed"
+					}),
 					"same_email" => BadRequest(new ErrorViewModel
 					{
 						Message = "新 Email 與目前相同",
@@ -168,6 +238,11 @@ namespace EatTogether.API.Controllers
 					{
 						Message = "此 Email 已被其他帳號使用",
 						ErrorCode = "email_taken"
+					}),
+					"cannot_change_email_external_login" => BadRequest(new ErrorViewModel
+					{
+						Message = "第三方登入帳號的 Email 無法修改",
+						ErrorCode = "cannot_change_email_external_login"
 					}),
 					_ => BadRequest(new ErrorViewModel { Message = "申請失敗，請稍後再試" })
 				};
@@ -193,6 +268,21 @@ namespace EatTogether.API.Controllers
 			{
 				return result.ErrorMessage switch
 				{
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => BadRequest(new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
+					"email_not_confirmed" => BadRequest(new ErrorViewModel
+					{
+						Message = "請先驗證您的信箱",
+						ErrorCode = "email_not_confirmed"
+					}),
 					"already_has_account" => BadRequest(new ErrorViewModel
 					{
 						Message = "此帳號已設有一般帳號密碼",
@@ -224,9 +314,24 @@ namespace EatTogether.API.Controllers
 			{
 				return result.ErrorMessage switch
 				{
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => BadRequest(new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
+					"email_not_confirmed" => BadRequest(new ErrorViewModel
+					{
+						Message = "請先驗證您的信箱",
+						ErrorCode = "email_not_confirmed"
+					}),
 					"cannot_unlink_only_login" => BadRequest(new ErrorViewModel
 					{
-						Message = "請先建立帳號密碼後再取消 Google 連結",
+						Message = "請先建立帳號密碼後再取消第三方連結",
 						ErrorCode = "cannot_unlink_only_login"
 					}),
 					"google_not_linked" => BadRequest(new ErrorViewModel
@@ -241,27 +346,94 @@ namespace EatTogether.API.Controllers
 			return Ok(new SuccessViewModel { Message = "已取消與 Google 帳號的連結" });
 		}
 
-		// DELETE /api/members/me
-		// EmptyBodyBehavior.Allow：純 Google 帳號刪除時不帶 body，
-		// 但 apiFetch.js 仍會送出 Content-Type: application/json，
-		// 預設行為會在 Model Binding 階段直接 400，永遠進不到 action
-		[HttpDelete("me")]
+		/// <summary>
+		/// 申請刪除帳號 (第一步)
+		/// </summary>
+		// POST /api/members/me/delete-request
+		[HttpPost("me/delete-request")]
 		[Authorize]
 		[EnableRateLimiting("AuthPolicy")]
-		public async Task<IActionResult> DeleteAccount(
-			[FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] DeleteAccountDto? dto)
+		public async Task<IActionResult> RequestDeleteAccount([FromBody] DeleteAccountDto dto)
 		{
 			if (!ModelState.IsValid)
 				return BadRequest(ModelState);
 
 			int memberId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-			var result = await _memberService.DeleteAccountAsync(memberId, dto ?? new DeleteAccountDto());
+			var result = await _memberService.RequestDeleteAccountAsync(memberId, dto);
 
 			if (!result.IsSuccess)
 			{
 				return result.ErrorMessage switch
 				{
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => BadRequest(new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
+					"password_required" => BadRequest(new ErrorViewModel
+					{
+						Message = "請輸入密碼",
+						ErrorCode = "password_required"
+					}),
+					"wrong_password" => BadRequest(new ErrorViewModel
+					{
+						Message = "密碼不正確",
+						ErrorCode = "wrong_password"
+					}),
+					_ => BadRequest(new ErrorViewModel { Message = "申請失敗，請稍後再試" })
+				};
+			}
+
+			return Ok(new SuccessViewModel
+			{
+				Message = "確認信已寄至您的信箱，請點擊連結完成刪除"
+			});
+		}
+
+		/// <summary>
+		/// 確認刪除帳號 (第二步,點擊信中連結)
+		/// 此端點不需要登入, 但需要有效的 token
+		/// </summary>
+		// DELETE /api/members/confirm-delete
+		[HttpDelete("confirm-delete")]
+		[AllowAnonymous]
+		[EnableRateLimiting("AuthPolicy")]
+		public async Task<IActionResult> ConfirmDeleteAccount([FromBody] ConfirmDeleteAccountDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
+			var result = await _memberService.ConfirmDeleteAccountAsync(dto);
+
+			if (!result.IsSuccess)
+			{
+				return result.ErrorMessage switch
+				{
+					"invalid_or_expired_token" => BadRequest(new ErrorViewModel
+					{
+						Message = "無效或已過期的連結，請重新申請",
+						ErrorCode = "invalid_or_expired_token"
+					}),
+					"invalid_token_type" => BadRequest(new ErrorViewModel
+					{
+						Message = "無效的 Token 類型",
+						ErrorCode = "invalid_token_type"
+					}),
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => BadRequest(new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
 					"password_required" => BadRequest(new ErrorViewModel
 					{
 						Message = "請輸入密碼以確認刪除",
@@ -276,7 +448,35 @@ namespace EatTogether.API.Controllers
 				};
 			}
 
-			return Ok(new SuccessViewModel { Message = "帳號已刪除" });
+			return Ok(new SuccessViewModel
+			{
+				Message = "帳號已成功刪除，感謝您使用我們的服務"
+			});
+		}
+
+		// GET /api/members/validate-delete-token?token=xxx
+		[HttpGet("validate-delete-token")]
+		[AllowAnonymous]
+		[EnableRateLimiting("AuthPolicy")]
+		public async Task<IActionResult> ValidateDeleteToken([FromQuery] string token)
+		{
+			if (string.IsNullOrWhiteSpace(token))
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "連結無效或已過期",
+					ErrorCode = "invalid_or_expired_token"
+				});
+
+			var result = await _memberService.ValidateDeleteTokenAsync(token);
+
+			if (!result.IsSuccess)
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "連結無效或已過期",
+					ErrorCode = "invalid_or_expired_token"
+				});
+
+			return Ok(new SuccessViewModel { Message = "token 有效" });
 		}
 	}
 }
