@@ -257,15 +257,39 @@
                                 <div
                                     v-for="item in order.items?.filter((i) => i)"
                                     :key="item.productName"
-                                    class="font-body"
-                                    style="color: #f9ddd3; font-size: 0.9rem"
+                                    class="history-item-wrap"
                                 >
-                                    {{ item.qty }} x {{ item.productName }}
-                                    <span
-                                        v-if="item.note"
-                                        style="color: rgba(208, 197, 181, 0.5); font-size: 0.8rem"
-                                        >（{{ item.note }}）</span
+                                    <div
+                                        class="font-body"
+                                        style="color: #f9ddd3; font-size: 0.9rem"
                                     >
+                                        <span
+                                            v-if="item.isSetMeal"
+                                            class="history-setmeal-badge font-label"
+                                            >套餐</span
+                                        >
+                                        {{ item.qty }} x {{ item.productName }}
+                                        <span
+                                            v-if="item.note"
+                                            style="
+                                                color: rgba(208, 197, 181, 0.5);
+                                                font-size: 0.8rem;
+                                            "
+                                            >（{{ item.note }}）</span
+                                        >
+                                    </div>
+                                    <!-- 套餐子項目 -->
+                                    <div
+                                        v-if="item.isSetMeal && item.subItems?.length"
+                                        class="history-subitems"
+                                    >
+                                        <span
+                                            v-for="sub in item.subItems"
+                                            :key="sub.productName"
+                                            class="font-body history-subitem"
+                                            >{{ sub.qty }} x {{ sub.productName }}</span
+                                        >
+                                    </div>
                                 </div>
                                 <div
                                     v-if="order.orderNote"
@@ -1355,8 +1379,16 @@
 
                 <!-- 右欄：提醒 + 取餐 + 聯絡 + 返回 -->
                 <div class="sp-col-right">
-                    <!-- 防呆提醒（最上方）-->
+                    <!-- 防呆提醒 -->
                     <div class="sp-reminders">
+                        <!-- 查詢訂單進度提示（卡片最上方） -->
+                        <p class="font-label sp-lookup-hint-text">
+                            想確認取餐進度可至
+                            <RouterLink to="/order-lookup" class="sp-lookup-link"
+                                >訂單查詢頁</RouterLink
+                            >
+                            隨時查詢
+                        </p>
                         <div class="sp-reminder-item">
                             <span class="sp-reminder-icon">⏱</span>
                             <span class="font-label">餐點現點現做，請耐心等候</span>
@@ -1400,7 +1432,9 @@
                             </div>
                             <div class="sp-meta-row">
                                 <span class="font-label sp-meta-label">餐具</span>
-                                <span class="font-label sp-meta-val">{{ confirmedNeedUtensils ? '需要' : '不需要' }}</span>
+                                <span class="font-label sp-meta-val">{{
+                                    confirmedNeedUtensils ? '需要' : '不需要'
+                                }}</span>
                             </div>
                         </div>
                     </div>
@@ -1533,17 +1567,15 @@
                         :key="toast.key"
                         :class="[
                             'notify-toast-card',
-                            !isLoggedIn
-                                ? 'eligible'
-                                : toast.type === 'near'
-                                  ? 'near'
-                                  : toast.type === 'eligible-notify'
-                                    ? 'eligible'
-                                    : toast.type === 'one-event-note'
-                                      ? 'info'
-                                      : toast.type === 'applied-event'
-                                        ? 'applied'
-                                        : 'eligible',
+                            toast.type === 'near'
+                                ? 'near'
+                                : toast.type === 'eligible-notify'
+                                  ? 'eligible'
+                                  : toast.type === 'one-event-note'
+                                    ? 'info'
+                                    : toast.type === 'applied-event'
+                                      ? 'applied'
+                                      : 'eligible',
                         ]"
                     >
                         <button class="notify-toast-close" @click="dismissToast(toast.key)">
@@ -1562,9 +1594,11 @@
                         </div>
                         <p class="font-body notify-toast-msg">
                             <template v-if="toast.type === 'near'"
-                                >差 NT${{ toast.ev.minSpend - total }} 即可參加「{{
-                                    toast.ev.title
-                                }}」活動，享 {{ toast.ev.discountDescription }} 優惠！</template
+                                >差 NT${{
+                                    toast.ev.minSpend - (total - couponDiscount)
+                                }}
+                                即可參加「{{ toast.ev.title }}」活動，享
+                                {{ toast.ev.discountDescription }} 優惠！</template
                             >
                             <template v-else-if="toast.type === 'eligible-notify'">
                                 <template v-if="!isLoggedIn">
@@ -1588,7 +1622,7 @@
                                 </template>
                             </template>
                             <template v-else-if="toast.type === 'one-event-note'"
-                                >每次用餐能參加一個活動，不得與其他優惠活動合併使用</template
+                                >每次用餐能參加一個活動，不得與其他優惠活動合併使用(系統將自動套入門檻最高的活動)</template
                             >
                             <template v-else-if="toast.type === 'applied-event'"
                                 >已參加「{{ toast.ev.title }}」活動 （滿 NT${{
@@ -1608,13 +1642,14 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useOrderStore } from '@/stores/order'
 import { useAuthStore } from '@/stores/auth'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import apiFetch from '@/utils/apiFetch'
 import DishDetailModal from '@/components/Order/DishDetailModal.vue'
 import SetMealSelectModal from '@/components/Order/SetMealSelectModal.vue'
 
 const store = useOrderStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 // ── 步驟 & 畫面狀態 ──────────────────────────────────
 const step = ref(1)
@@ -1697,6 +1732,59 @@ const confirmedCouponMsg = ref('')
 const confirmedSubtotal = ref(0) // 餐點原價合計（未含折扣）
 const orderProgress = ref(1) // 動態進度條：1=接收 2=製作中 3=完成
 
+// ── 成功頁 localStorage 持久化（同日期重整後還原）──────
+const SUCCESS_KEY = 'takeout_success_v1'
+const _todayYMD = () => new Date().toISOString().slice(0, 10)
+
+function saveSuccessToStorage() {
+    try {
+        localStorage.setItem(
+            SUCCESS_KEY,
+            JSON.stringify({
+                date: _todayYMD(),
+                orderNumber: orderNumber.value,
+                orderProgress: orderProgress.value,
+                confirmedPickupTime: confirmedPickupTime.value,
+                confirmedName: confirmedName.value,
+                confirmedPhone: confirmedPhone.value,
+                confirmedNeedUtensils: confirmedNeedUtensils.value,
+                confirmedTotal: confirmedTotal.value,
+                confirmedItems: JSON.parse(JSON.stringify(confirmedItems.value)),
+                confirmedNote: confirmedNote.value,
+                confirmedGift: confirmedGift.value,
+                confirmedEventTitle: confirmedEventTitle.value,
+                confirmedEventDesc: confirmedEventDesc.value,
+                confirmedEventDiscountType: confirmedEventDiscountType.value,
+                confirmedAutoEventDiscount: confirmedAutoEventDiscount.value,
+                confirmedCouponCode: confirmedCouponCode.value,
+                confirmedCouponDiscount: confirmedCouponDiscount.value,
+                confirmedSubtotal: confirmedSubtotal.value,
+            })
+        )
+    } catch {}
+}
+
+function loadSuccessFromStorage() {
+    try {
+        const raw = localStorage.getItem(SUCCESS_KEY)
+        if (!raw) return null
+        const saved = JSON.parse(raw)
+        if (saved?.date !== _todayYMD()) {
+            localStorage.removeItem(SUCCESS_KEY)
+            return null
+        }
+        return saved
+    } catch {
+        return null
+    }
+}
+
+function clearSuccessFromStorage() {
+    try {
+        localStorage.removeItem(SUCCESS_KEY)
+    } catch {}
+}
+
 // ── Modal 狀態 ───────────────────────────────────────
 const activeDetail = ref(null)
 const editingLineId = ref(null)
@@ -1735,7 +1823,7 @@ async function loadMyCoupons() {
 async function onCouponSelect() {
     if (selectedCouponCode.value === '__coupons__') {
         selectedCouponCode.value = ''
-        window.location.href = '/coupons'
+        router.push('/coupons')
         return
     }
     if (!selectedCouponCode.value) {
@@ -1797,22 +1885,47 @@ function openAuthModal() {
     }
 }
 
-function reorder(order) {
+async function reorder(order) {
     let hasSetMeal = false
-    order.items.forEach((item) => {
+
+    for (const item of order.items ?? []) {
         const matched = products.value.find((p) => p.productName === item.productName)
-        if (!matched) return
+        if (!matched) continue
 
         if (item.isSetMeal && matched.isSetMeal && matched.setMealId) {
-            // 套餐：加入購物車並帶入基本 setMealData（id 必須有值，讓點擊後可開啟編輯選單）
-            // fixedItems / selectedOptions 留空，提示使用者點擊確認內容
             hasSetMeal = true
+            let fixedItems = []
+            let selectedOptions = []
+
+            try {
+                // 取得套餐定義，重建 fixedItems 與 selectedOptions
+                const res = await apiFetch(`/SetMeals/${matched.setMealId}`)
+                if (res.ok) {
+                    const meal = await res.json()
+                    fixedItems = (meal.items ?? []).filter((i) => !i.isOptional)
+                    const optionalItems = (meal.items ?? []).filter((i) => i.isOptional)
+                    for (const sub of item.subItems ?? []) {
+                        const opt = optionalItems.find((o) => o.dishName === sub.productName)
+                        if (opt) {
+                            selectedOptions.push({
+                                dishId: opt.dishId,
+                                dishName: opt.dishName,
+                                qty: sub.qty,
+                                groupNo: opt.optionGroupNo,
+                            })
+                        }
+                    }
+                }
+            } catch {
+                /* fallback：留空，使用者手動選 */
+            }
+
             for (let i = 0; i < item.qty; i++) {
                 store.addSetMeal(matched.productId, matched.unitPrice, item.note || '', {
                     id: matched.setMealId,
                     name: matched.productName,
-                    fixedItems: [],
-                    selectedOptions: [],
+                    fixedItems,
+                    selectedOptions,
                 })
             }
         } else {
@@ -1820,9 +1933,10 @@ function reorder(order) {
                 store.addItem(matched.productId, item.note || '')
             }
         }
-    })
+    }
+
     activeSidebarCat.value = '全部'
-    showToast(hasSetMeal ? '已加入購物車（套餐請點擊確認內容）' : '已加入購物車')
+    showToast('已加入購物車')
 }
 
 // ── Toast ────────────────────────────────────────────
@@ -1978,9 +2092,10 @@ const displaySections = computed(() => {
 })
 
 // ── 活動 API ─────────────────────────────────────────
-async function fetchActiveEvents() {
+async function fetchActiveEvents(amount = null) {
+    const effectiveAmount = amount ?? total.value
     try {
-        const res = await apiFetch(`/Orders/ActiveEvents?amount=${total.value}`)
+        const res = await apiFetch(`/Orders/ActiveEvents?amount=${effectiveAmount}`)
         if (!res.ok) return
         const data = await res.json()
         autoEvents.value = data.autoEvents ?? []
@@ -1990,12 +2105,33 @@ async function fetchActiveEvents() {
         const autoIdSet = new Set(autoEvents.value.map((e) => e.id))
         const nearAutoIdSet = new Set(nearAutoEvents.value.map((e) => e.id))
         const hasBest = !!bestAutoEvent.value
+        const bestId = bestAutoEvent.value?.id
 
-        // ── 清除失效的訪客 autoEvent toast（已登入 or 事件已失效）──
+        // ── 所有已達門檻的活動（auto + notify eligible），按 minSpend 降序排列
+        // overallBestId = 門檻最高的那個，只有它才顯示「過門檻」eligible-notify toast
+        const allEligibleSorted = [
+            ...autoEvents.value,
+            ...notifyEvents.value.filter((e) => e.isEligible),
+        ].sort((a, b) => b.minSpend - a.minSpend)
+        const overallBestId = allEligibleSorted[0]?.id ?? null
+
+        // 有 ≥ 2 個活動達標 → 需要顯示「不得合併使用」警語
+        const hasMultipleEligible = allEligibleSorted.length > 1
+
+        // ── 清除：訪客 autoEvent 的 eligible-notify，只保留 overallBest ──
         for (const [id, key] of _guestAutoKeys) {
-            if (!autoIdSet.has(id) || isLoggedIn.value) {
+            if (!autoIdSet.has(id) || isLoggedIn.value || id !== overallBestId) {
                 dismissToast(key)
                 _guestAutoKeys.delete(id)
+            }
+        }
+
+        // ── 清除：notifyEvent 的 eligible-notify，只保留 overallBest ──
+        for (const [id, key] of _eligibleNotifyKeys) {
+            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
+            if (!stillEligible || id !== overallBestId) {
+                dismissToast(key)
+                _eligibleNotifyKeys.delete(id)
             }
         }
 
@@ -2003,7 +2139,11 @@ async function fetchActiveEvents() {
         for (const [id, key] of _nearToastKeys) {
             const stillNearAuto = nearAutoIdSet.has(id)
             const stillNearNotify = notifyEvents.value.some(
-                (e) => e.id === id && !e.isEligible && e.minSpend - total.value <= 100
+                (e) =>
+                    e.id === id &&
+                    !e.isEligible &&
+                    e.minSpend - effectiveAmount > 0 &&
+                    e.minSpend - effectiveAmount <= 100
             )
             if (!stillNearAuto && !stillNearNotify) {
                 dismissToast(key)
@@ -2011,28 +2151,24 @@ async function fetchActiveEvents() {
             }
         }
 
-        // ── 清除失效的 eligible-notify toast ──
-        for (const [id, key] of _eligibleNotifyKeys) {
-            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
-            if (!stillEligible || hasBest) {
-                dismissToast(key)
-                _eligibleNotifyKeys.delete(id)
-            }
-        }
-
-        if (!hasBest && _oneEventNoteKey !== null) {
+        // ── 清除 one-event-note：無達標活動或未滿 2 個達標時移除 ──
+        if (_oneEventNoteKey !== null && (!overallBestId || !hasMultipleEligible)) {
             dismissToast(_oneEventNoteKey)
             _oneEventNoteKey = null
         }
 
-        // ── 0. 訪客：autoEvents 達門檻 → eligible-notify toast（含登入連結）──
-        if (!isLoggedIn.value) {
-            autoEvents.value.forEach((ev) => {
-                if (!_guestAutoKeys.has(ev.id)) {
-                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
-                    _guestAutoKeys.set(ev.id, key)
-                }
+        // ── 0. 訪客：只顯示 overallBest 的 eligible-notify（若為 autoEvent）──
+        if (
+            !isLoggedIn.value &&
+            hasBest &&
+            bestId === overallBestId &&
+            !_guestAutoKeys.has(bestId)
+        ) {
+            const key = pushToast(bestAutoEvent.value, {
+                persistent: true,
+                type: 'eligible-notify',
             })
+            _guestAutoKeys.set(bestId, key)
         }
 
         // ── 1. nearAutoEvents（差額≤100）→ 差額 toast ──
@@ -2044,28 +2180,29 @@ async function fetchActiveEvents() {
 
         // ── 2. notifyEvents（IsAutoDiscount=0）──
         notifyEvents.value.forEach((ev) => {
-            const gap = ev.minSpend - total.value
+            const gap = ev.minSpend - effectiveAmount
             if (ev.isEligible) {
+                // 已達門檻 → 清差額 toast
                 const nearKey = _nearToastKeys.get(ev.id)
                 if (nearKey !== undefined) {
                     dismissToast(nearKey)
                     _nearToastKeys.delete(ev.id)
                 }
-                if ((!hasBest || !isLoggedIn.value) && !_eligibleNotifyKeys.has(ev.id)) {
+                // 只有 overallBest 才顯示 eligible-notify，避免多個達標同時顯示
+                if (ev.id === overallBestId && !_eligibleNotifyKeys.has(ev.id)) {
                     _eligibleNotifyKeys.set(
                         ev.id,
                         pushToast(ev, { persistent: true, type: 'eligible-notify' })
                     )
                 }
-            } else if (gap <= 100 && !_nearToastKeys.has(ev.id)) {
+            } else if (gap > 0 && gap <= 100 && !_nearToastKeys.has(ev.id)) {
+                // 差額 > 0 且 ≤ 100 → 差額 toast
                 _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
             }
         })
 
-        // ── 3. bestAutoEvent 存在且有其他符合活動 → 「一個活動限制」提示 ──
-        const hasOtherEligible =
-            notifyEvents.value.some((e) => e.isEligible) || autoEvents.value.length > 1
-        if (hasBest && hasOtherEligible && _oneEventNoteKey === null) {
+        // ── 3. 有 ≥ 2 個活動達標 → 「每次用餐只能參加一個活動」警語 ──
+        if (overallBestId && hasMultipleEligible && _oneEventNoteKey === null) {
             _oneEventNoteKey = pushToast(
                 { id: -1, title: '', discountDescription: '' },
                 { persistent: true, type: 'one-event-note' }
@@ -2078,7 +2215,7 @@ async function fetchActiveEvents() {
 
 watch(total, (val) => {
     if (val > 0) {
-        fetchActiveEvents()
+        fetchActiveEvents(val - couponDiscount.value)
     } else {
         autoEvents.value = []
         notifyEvents.value = []
@@ -2091,6 +2228,13 @@ watch(total, (val) => {
         giftCartItem.value = null
         _lastBestEventId = null
         clearTimeout(_appliedEventToastTimer)
+    }
+})
+
+// 套用 / 清除優惠券時，以扣券後的有效金額重新判斷活動門檻
+watch(couponDiscount, (discount) => {
+    if (total.value > 0) {
+        fetchActiveEvents(total.value - discount)
     }
 })
 
@@ -2170,12 +2314,14 @@ function confirmCouponDespiteEvent() {
     couponDiscount.value = discount
     pendingCouponData.value = null
     couponEventWarnModal.value = false
+    // watch(couponDiscount) 會自動以有效金額重新判斷活動門檻
 }
 
-// 使用者取消（不套用優惠券）
+// 使用者取消（不套用優惠券）→ 還原選擇器至「選擇優惠券」
 function cancelCouponWarn() {
     pendingCouponData.value = null
     couponEventWarnModal.value = false
+    resetCoupon()
 }
 
 // ── 步驟流程 ─────────────────────────────────────────
@@ -2255,7 +2401,7 @@ async function openCartItemEdit(item) {
 
 function onDetailConfirm(dish, qty, note) {
     if (editingLineId.value !== null) {
-        store.removeLineItem(editingLineId.value)
+        store.deleteLine(editingLineId.value) // 完整刪除整條 line（含所有數量）
         for (let i = 0; i < qty; i++) store.addItem(dish.productId, note || '')
         showToast(`「${dish.productName}」已更新`)
         editingLineId.value = null
@@ -2442,11 +2588,13 @@ async function submitOrder() {
         // 進入成功頁並捲回頂部
         orderProgress.value = 1
         step.value = 4
+        saveSuccessToStorage() // 存入 localStorage，重整後可還原
         window.scrollTo({ top: 0, behavior: 'smooth' })
 
         // 動態進度：1.5 秒後推進到「餐點製作中」
         setTimeout(() => {
             orderProgress.value = 2
+            saveSuccessToStorage() // 更新進度到 localStorage
         }, 1500)
     } catch (err) {
         console.error(err)
@@ -2457,6 +2605,7 @@ async function submitOrder() {
 }
 
 function onSuccessClose() {
+    clearSuccessFromStorage() // 返回菜單時清除持久化成功頁
     step.value = 1
     pickupTime.value = ''
     // 優先從會員資料還原，未登入才清空（避免下次點餐需重填）
@@ -2554,7 +2703,31 @@ onMounted(async () => {
 
     // 頁面載入時若購物車（Pinia 持久化）已有品項，主動觸發一次活動計算
     // watch(total) 只在值「改變」時才跑，初始值不觸發，故需在此補呼叫
-    if (total.value > 0) fetchActiveEvents()
+    if (total.value > 0) fetchActiveEvents(total.value - couponDiscount.value)
+
+    // ── 還原當日成功頁（重整後回到 step 4）──
+    const savedSuccess = loadSuccessFromStorage()
+    if (savedSuccess?.orderNumber) {
+        orderNumber.value = savedSuccess.orderNumber
+        orderProgress.value = savedSuccess.orderProgress ?? 2
+        confirmedPickupTime.value = savedSuccess.confirmedPickupTime ?? ''
+        confirmedName.value = savedSuccess.confirmedName ?? ''
+        confirmedPhone.value = savedSuccess.confirmedPhone ?? ''
+        confirmedNeedUtensils.value = savedSuccess.confirmedNeedUtensils ?? false
+        confirmedTotal.value = savedSuccess.confirmedTotal ?? 0
+        confirmedItems.value = savedSuccess.confirmedItems ?? []
+        confirmedNote.value = savedSuccess.confirmedNote ?? ''
+        confirmedGift.value = savedSuccess.confirmedGift ?? null
+        confirmedEventTitle.value = savedSuccess.confirmedEventTitle ?? ''
+        confirmedEventDesc.value = savedSuccess.confirmedEventDesc ?? ''
+        confirmedEventDiscountType.value = savedSuccess.confirmedEventDiscountType ?? ''
+        confirmedAutoEventDiscount.value = savedSuccess.confirmedAutoEventDiscount ?? 0
+        confirmedCouponCode.value = savedSuccess.confirmedCouponCode ?? ''
+        confirmedCouponDiscount.value = savedSuccess.confirmedCouponDiscount ?? 0
+        confirmedSubtotal.value = savedSuccess.confirmedSubtotal ?? 0
+        step.value = 4
+        window.scrollTo({ top: 0 })
+    }
 })
 </script>
 
@@ -3795,6 +3968,24 @@ onMounted(async () => {
 }
 
 /* 返回菜單按鈕 */
+.sp-lookup-hint-text {
+    font-size: 1rem;
+    color: rgba(208, 197, 181, 0.6);
+    margin: 0 0 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.35);
+    line-height: 1.6;
+    text-align: center;
+}
+.sp-lookup-link {
+    color: #e3c76b;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.2s;
+}
+.sp-lookup-link:hover {
+    color: #f0d87a;
+}
 .sp-back-btn {
     width: 100%;
     padding: 1rem;
@@ -3915,6 +4106,36 @@ onMounted(async () => {
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
+}
+.history-item-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.history-setmeal-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.2rem;
+    background: rgba(93, 69, 20, 0.4);
+    border: 1px solid rgba(228, 194, 133, 0.35);
+    color: #e4c285;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+.history-subitems {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding-left: 1rem;
+    border-left: 2px solid rgba(77, 70, 58, 0.4);
+    margin-left: 0.25rem;
+}
+.history-subitem {
+    font-size: 0.8rem;
+    color: rgba(208, 197, 181, 0.6);
 }
 .history-reorder-btn {
     align-self: flex-end;

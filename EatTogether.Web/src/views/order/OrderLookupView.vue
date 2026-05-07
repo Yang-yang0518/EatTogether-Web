@@ -136,11 +136,23 @@
                     <div v-else-if="searched && results.length === 0" class="ol-empty">
                         <div class="ol-empty-icon">📭</div>
                         <p class="font-body ol-empty-text">查無符合的外帶訂單</p>
-                        <p class="font-label ol-empty-hint">請確認資料是否填寫正確，或查詢僅限當日訂單</p>
+                        <p class="font-label ol-empty-hint">
+                            請確認資料是否填寫正確，或查詢僅限當日訂單
+                        </p>
                     </div>
 
                     <!-- 有結果：直接顯示詳情 -->
                     <template v-else-if="selectedOrder">
+                        <!-- 訂單編號列 -->
+                        <div class="ol-order-header">
+                            <div class="ol-order-num-block">
+                                <span class="font-label ol-order-num-label">訂單編號</span>
+                                <strong class="ol-order-num-val">{{
+                                    selectedOrder.orderNumber
+                                }}</strong>
+                            </div>
+                        </div>
+
                         <!-- 進度條（全寬）：依 orderStatus 決定狀態 -->
                         <div class="ol-progress">
                             <div class="ol-prog-step ol-prog-done">
@@ -159,11 +171,14 @@
                                 </div>
                                 <span class="font-label ol-prog-lbl">訂單已接收</span>
                             </div>
+                            <div :class="['ol-prog-line', 'ol-prog-line-lit']"></div>
                             <div
-                                :class="['ol-prog-line', selectedOrder.orderStatus === 1 ? 'ol-prog-line-lit' : 'ol-prog-line-lit']"
-                            ></div>
-                            <div
-                                :class="['ol-prog-step', selectedOrder.orderStatus === 1 ? 'ol-prog-done' : 'ol-prog-active']"
+                                :class="[
+                                    'ol-prog-step',
+                                    selectedOrder.orderStatus === 1
+                                        ? 'ol-prog-done'
+                                        : 'ol-prog-active',
+                                ]"
                             >
                                 <div class="ol-prog-dot">
                                     <svg
@@ -183,9 +198,17 @@
                                 <span class="font-label ol-prog-lbl">餐點製作中</span>
                             </div>
                             <div
-                                :class="['ol-prog-line', selectedOrder.orderStatus === 1 ? 'ol-prog-line-lit' : '']"
+                                :class="[
+                                    'ol-prog-line',
+                                    selectedOrder.orderStatus === 1 ? 'ol-prog-line-lit' : '',
+                                ]"
                             ></div>
-                            <div :class="['ol-prog-step', selectedOrder.orderStatus === 1 ? 'ol-prog-done' : '']">
+                            <div
+                                :class="[
+                                    'ol-prog-step',
+                                    selectedOrder.orderStatus === 1 ? 'ol-prog-done' : '',
+                                ]"
+                            >
                                 <div class="ol-prog-dot">
                                     <svg
                                         v-if="selectedOrder.orderStatus === 1"
@@ -204,16 +227,20 @@
                                 <span class="font-label ol-prog-lbl">餐點已完成</span>
                             </div>
                         </div>
+
                         <!-- 已結帳提示 -->
-                        <div v-if="selectedOrder.orderStatus === 1" class="ol-paid-badge font-label">
+                        <div
+                            v-if="selectedOrder.orderStatus === 1"
+                            class="ol-paid-badge font-label"
+                        >
                             ✅ 此訂單已結帳完成
                         </div>
 
-                        <!-- 左右兩欄 -->
+                        <!-- 雙欄主體（與訂單已送出頁面相同排版）-->
                         <div class="ol-detail-cols">
                             <!-- 左欄：餐點明細 -->
                             <div class="ol-detail-left">
-                                <div class="ol-section-label font-label">餐點明細</div>
+                                <h3 class="font-label ol-section-title">餐點明細</h3>
                                 <div class="ol-items-detail">
                                     <div
                                         v-for="(item, idx) in selectedOrder.items"
@@ -230,15 +257,6 @@
                                             <span class="font-body ol-item-name">{{
                                                 item.productName
                                             }}</span>
-                                            <span
-                                                class="font-label"
-                                                style="
-                                                    color: rgba(208, 197, 181, 0.5);
-                                                    font-size: 1rem;
-                                                    padding-left: 1rem;
-                                                "
-                                                >x {{ item.qty }}</span
-                                            >
                                             <div v-if="item.subItems?.length" class="ol-subitems">
                                                 <span
                                                     v-for="s in item.subItems"
@@ -254,15 +272,15 @@
                                             >
                                         </div>
                                         <div class="ol-item-right">
+                                            <span class="font-label ol-item-qty"
+                                                >× {{ item.qty }}</span
+                                            >
                                             <span
                                                 v-if="item.isGift"
                                                 class="gift-order-badge font-label"
                                                 >🎁 贈品</span
                                             >
-                                            <span
-                                                v-else
-                                                class="font-label"
-                                                style="color: #d5b478; font-size: 0.9rem"
+                                            <span v-else class="font-label ol-item-price"
                                                 >NT$
                                                 {{
                                                     (item.unitPrice * item.qty).toLocaleString()
@@ -270,119 +288,171 @@
                                             >
                                         </div>
                                     </div>
-                                    <!-- 贈品活動來源標註（贈品型活動才顯示） -->
+                                    <!-- 贈品活動來源 -->
                                     <div
-                                        v-if="selectedOrder.eventTitle && selectedOrder.eventDiscountType === 'Gift'"
+                                        v-if="
+                                            selectedOrder.eventTitle &&
+                                            selectedOrder.eventDiscountType === 'Gift'
+                                        "
                                         class="ol-gift-event-note font-label"
                                     >
-                                        {{ selectedOrder.eventTitle }}：{{ selectedOrder.eventDiscountType === 'Gift' ? '贈品贈送' : '' }}
+                                        {{ selectedOrder.eventTitle }}：贈品贈送
                                     </div>
                                 </div>
 
-                                <div class="feather-divider" style="margin: 0.75rem 0"></div>
+                                <div
+                                    class="feather-divider"
+                                    style="margin: 0.85rem 0 0.75rem"
+                                ></div>
 
-                                <!-- 活動 / 優惠券 / 合計 / 折扣 / 金額總計 -->
                                 <div class="ol-meta-rows">
-                                    <!-- 活動（非贈品型才顯示折抵金額） -->
+                                    <!-- 活動（非贈品型） -->
                                     <div
-                                        v-if="selectedOrder.eventTitle && selectedOrder.eventDiscountType !== 'Gift'"
+                                        v-if="
+                                            selectedOrder.eventTitle &&
+                                            selectedOrder.eventDiscountType !== 'Gift'
+                                        "
                                         class="ol-meta-row-3"
                                     >
                                         <span class="font-label ol-meta-label">活動</span>
-                                        <span class="font-label ol-meta-val-mid">{{ selectedOrder.eventTitle }}</span>
-                                        <span class="font-label ol-meta-discount">折抵 NT$ {{ selectedOrder.eventDiscount.toLocaleString() }}</span>
+                                        <span class="font-label ol-meta-val-mid">{{
+                                            selectedOrder.eventTitle
+                                        }}</span>
+                                        <span class="font-label ol-meta-discount"
+                                            >折抵 NT$
+                                            {{ selectedOrder.eventDiscount.toLocaleString() }}</span
+                                        >
                                     </div>
                                     <!-- 優惠券 -->
                                     <div v-if="selectedOrder.couponCode" class="ol-meta-row-3">
                                         <span class="font-label ol-meta-label">優惠券</span>
-                                        <span class="font-label ol-meta-val-mid">{{ selectedOrder.couponCode }}</span>
-                                        <span class="font-label ol-meta-discount">折抵 NT$ {{ selectedOrder.couponDiscount.toLocaleString() }}</span>
+                                        <span class="font-label ol-meta-val-mid">{{
+                                            selectedOrder.couponCode
+                                        }}</span>
+                                        <span class="font-label ol-meta-discount"
+                                            >折抵 NT$
+                                            {{
+                                                selectedOrder.couponDiscount.toLocaleString()
+                                            }}</span
+                                        >
                                     </div>
-                                    <!-- 備註 -->
-                                    <div v-if="selectedOrder.note" class="ol-meta-row">
-                                        <span class="font-label ol-meta-label-dim">備註</span>
-                                        <span class="font-label ol-meta-val">{{ selectedOrder.note }}</span>
-                                    </div>
-                                    <!-- 合計（原價） -->
+                                    <!-- 合計 -->
                                     <div class="ol-meta-row">
                                         <span class="font-label ol-meta-label-dim">合計</span>
-                                        <span class="font-label ol-meta-val">NT$ {{ selectedOrder.subtotal.toLocaleString() }}</span>
+                                        <span class="font-label ol-meta-val"
+                                            >NT$ {{ selectedOrder.subtotal.toLocaleString() }}</span
+                                        >
                                     </div>
                                     <!-- 折扣 -->
-                                    <div v-if="selectedOrder.discountAmount > 0" class="ol-meta-row">
+                                    <div
+                                        v-if="selectedOrder.discountAmount > 0"
+                                        class="ol-meta-row"
+                                    >
                                         <span class="font-label ol-meta-label-dim">折扣</span>
-                                        <span class="font-label" style="color: #7ec87e">－ NT$ {{ selectedOrder.discountAmount.toLocaleString() }}</span>
+                                        <span class="font-label" style="color: #7ec87e"
+                                            >－ NT$
+                                            {{
+                                                selectedOrder.discountAmount.toLocaleString()
+                                            }}</span
+                                        >
                                     </div>
                                 </div>
 
-                                <div class="feather-divider" style="margin: 0.5rem 0 0.6rem"></div>
+                                <div
+                                    class="feather-divider"
+                                    style="margin: 0.65rem 0 0.55rem"
+                                ></div>
                                 <div class="ol-meta-row">
-                                    <span class="font-label ol-meta-label-dim" style="font-size: 0.95rem">金額總計</span>
+                                    <span
+                                        class="font-label ol-meta-label-dim"
+                                        style="font-size: 0.95rem"
+                                        >金額總計</span
+                                    >
                                     <span class="font-label" style="color: #e3c76b; font-size: 1rem"
                                         >NT$ {{ selectedOrder.totalAmount.toLocaleString() }}</span
                                     >
                                 </div>
+                                <!-- 備註 -->
+                                <div
+                                    v-if="selectedOrder.note"
+                                    class="ol-meta-row"
+                                    style="margin-top: 0.45rem"
+                                >
+                                    <span class="font-label ol-meta-label-dim">備註</span>
+                                    <span class="font-label ol-meta-val">{{
+                                        selectedOrder.note
+                                    }}</span>
+                                </div>
                             </div>
 
-                            <!-- 右欄：提示 + 顧客資訊 -->
+                            <!-- 右欄：提醒 + 取餐資訊 + 聯絡 -->
                             <div class="ol-detail-right">
-                                <div class="ol-tips">
-                                    <div class="ol-tip font-label">
-                                        <span class="ol-tip-icon">⏱</span>餐點現點現做，請耐心等候
+                                <!-- 防呆提醒（與成功頁相同樣式） -->
+                                <div class="ol-reminders">
+                                    <div class="ol-reminder-item">
+                                        <span class="ol-reminder-icon">⏱</span>
+                                        <span class="font-label">餐點現點現做，請耐心等候</span>
                                     </div>
-                                    <div class="ol-tip font-label">
-                                        <span class="ol-tip-icon">🥡</span>請於完成後 15
-                                        分鐘內取餐，以確保最佳風味
+                                    <div class="ol-reminder-item">
+                                        <span class="ol-reminder-icon">🍱</span>
+                                        <span class="font-label"
+                                            >請於完成後 15 分鐘內取餐，以確保最佳風味</span
+                                        >
                                     </div>
-                                    <div class="ol-tip font-label">
-                                        <span class="ol-tip-icon">🪙</span
-                                        >取餐時請告知訂單編號或出示本頁面
+                                    <div class="ol-reminder-item">
+                                        <span class="ol-reminder-icon">🪙</span>
+                                        <span class="font-label"
+                                            >取餐時請告知訂單編號或出示本頁面</span
+                                        >
                                     </div>
                                 </div>
 
+                                <!-- 預計取餐時間 + 顧客資訊 -->
                                 <div v-if="selectedOrder.pickupTime" class="ol-pickup-banner">
-                                    <span
-                                        class="font-label"
-                                        style="color: rgba(208, 197, 181, 0.5); font-size: 0.78rem"
-                                        >預計取餐時間</span
-                                    >
-                                    <span
-                                        class="font-headline"
-                                        style="
-                                            font-size: 1.25rem;
-                                            font-style: italic;
-                                            color: #e3c76b;
-                                        "
-                                        >今日 {{ selectedOrder.pickupTime }}</span
-                                    >
-                                </div>
-
-                                <div class="ol-info-rows">
-                                    <div v-if="selectedOrder.customerName" class="ol-info-row">
-                                        <span class="font-label ol-info-label">取餐人</span>
-                                        <span class="font-label ol-info-val">{{
-                                            selectedOrder.customerName
-                                        }}</span>
+                                    <div class="ol-pickup-top">
+                                        <span class="font-label ol-pickup-label">預計取餐時間</span>
+                                        <span class="font-headline ol-pickup-time"
+                                            >今日 {{ selectedOrder.pickupTime }}</span
+                                        >
                                     </div>
-                                    <div v-if="selectedOrder.customerPhone" class="ol-info-row">
-                                        <span class="font-label ol-info-label">聯絡電話</span>
-                                        <span class="font-label ol-info-val">{{
-                                            selectedOrder.customerPhone
-                                        }}</span>
-                                    </div>
-                                    <div class="ol-info-row">
-                                        <span class="font-label ol-info-label">付款方式</span>
-                                        <span class="font-label ol-info-val">現場付款</span>
-                                    </div>
-                                    <div class="ol-info-row">
-                                        <span class="font-label ol-info-label">取餐方式</span>
-                                        <span class="font-label ol-info-val">臨櫃自取</span>
+                                    <div class="ol-pickup-meta">
+                                        <div v-if="selectedOrder.customerName" class="ol-meta-row">
+                                            <span class="font-label ol-meta-label-dim">取餐人</span>
+                                            <span class="font-label ol-meta-val">{{
+                                                selectedOrder.customerName
+                                            }}</span>
+                                        </div>
+                                        <div v-if="selectedOrder.customerPhone" class="ol-meta-row">
+                                            <span class="font-label ol-meta-label-dim"
+                                                >聯絡電話</span
+                                            >
+                                            <span class="font-label ol-meta-val">{{
+                                                selectedOrder.customerPhone
+                                            }}</span>
+                                        </div>
+                                        <div class="ol-meta-row">
+                                            <span class="font-label ol-meta-label-dim"
+                                                >付款方式</span
+                                            >
+                                            <span class="font-label ol-meta-val">現場付款</span>
+                                        </div>
+                                        <div class="ol-meta-row">
+                                            <span class="font-label ol-meta-label-dim"
+                                                >取餐方式</span
+                                            >
+                                            <span class="font-label ol-meta-val">臨櫃自取</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <button class="ol-edit-btn font-label" @click="openEditModal">
-                                    編輯取餐資料
-                                </button>
+                                <!-- 餐廳聯絡資訊 -->
+                                <section class="ol-contact-section">
+                                    <h3 class="font-label ol-section-title">餐廳聯絡資訊</h3>
+                                    <p class="font-body ol-store-addr">台北市大安區慢食街 88 號</p>
+                                    <a href="tel:0223456789" class="font-body ol-store-tel"
+                                        >Tel: (02) 2345-6789</a
+                                    >
+                                </section>
                             </div>
                         </div>
                     </template>
@@ -709,6 +779,12 @@ function openEditModal() {
     color: rgba(208, 197, 181, 0.5);
     margin: 0;
 }
+.ol-empty-hint {
+    font-size: 0.78rem;
+    color: rgba(208, 197, 181, 0.35);
+    margin: 0;
+    text-align: center;
+}
 
 /* loading dots */
 .ol-loading-dots {
@@ -856,6 +932,7 @@ function openEditModal() {
     flex-direction: column;
     gap: 0;
     height: 66vh;
+    overflow-y: auto;
 }
 .ol-detail-right {
     width: 480px;
@@ -1015,9 +1092,33 @@ function openEditModal() {
     border-radius: 0.4rem;
     padding: 0.75rem 1rem;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
     width: 100%;
+}
+.ol-pickup-top {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.ol-pickup-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: rgba(208, 197, 181, 0.4);
+    text-transform: uppercase;
+}
+.ol-pickup-time {
+    font-size: 1.35rem;
+    color: #e3c76b;
+    letter-spacing: 0.04em;
+}
+.ol-pickup-meta {
+    border-top: 1px solid rgba(77, 70, 58, 0.3);
+    padding-top: 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
 }
 
 /* 品項 */
@@ -1158,6 +1259,99 @@ function openEditModal() {
     background: #1e100b;
     padding: 0 0.3rem;
     font-size: 0.65rem;
+}
+
+/* ── 訂單編號 header ── */
+.ol-order-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+.ol-order-num-block {
+    display: flex;
+    flex-direction: row;
+    gap: 0.1rem;
+}
+.ol-order-num-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: rgba(208, 197, 181, 0.4);
+    text-transform: uppercase;
+}
+.ol-order-num-val {
+    font-size: 1rem;
+    color: #e3c76b;
+    letter-spacing: 0.04em;
+    font-family: 'Work Sans', sans-serif;
+}
+
+/* ── Section title ── */
+.ol-section-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    color: rgba(208, 197, 181, 0.4);
+    text-transform: uppercase;
+    margin: 0 0 0.65rem;
+}
+
+/* ── 防呆提醒 ── */
+.ol-reminders {
+    background: rgba(10, 4, 2, 0.4);
+    border: 1px solid rgba(77, 70, 58, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.ol-reminder-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    font-size: 0.83rem;
+    color: rgba(208, 197, 181, 0.7);
+    line-height: 1.45;
+}
+.ol-reminder-icon {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    margin-top: 0.05rem;
+}
+
+/* ── 聯絡資訊 ── */
+.ol-contact-section {
+    background: rgba(10, 4, 2, 0.4);
+    border: 1px solid rgba(77, 70, 58, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+}
+.ol-store-addr {
+    font-size: 0.85rem;
+    color: rgba(208, 197, 181, 0.6);
+    margin: 0 0 0.35rem;
+}
+.ol-store-tel {
+    font-size: 0.85rem;
+    color: #e3c76b;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+    display: block;
+}
+.ol-store-tel:hover {
+    color: #f0d87a;
+}
+
+/* ── item qty / price ── */
+.ol-item-qty {
+    font-size: 0.82rem;
+    color: rgba(208, 197, 181, 0.5);
+    margin-right: 0.4rem;
+}
+.ol-item-price {
+    font-size: 0.88rem;
+    color: #d5b478;
 }
 
 /* 多筆切換 tab */

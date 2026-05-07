@@ -29,6 +29,12 @@ namespace EatTogether.Models.Repositories
         Task<bool> HasUnbilledDetailsForTableAsync(int tableId);
         Task<bool> AllNonCancelledDetailsBilledAsync(int preOrderId);
         Task UpdateTableAsync(int preOrderId, int? tableId, bool inOrOut);
+
+        // 前台重複使用防呆
+        /// <summary>取得當日會員已套用（未取消）的活動 ID 集合</summary>
+        Task<HashSet<int>> GetUsedEventIdsTodayByMemberAsync(int memberId);
+        /// <summary>當日會員是否已在未取消的訂單中套用此優惠券</summary>
+        Task<bool> IsCouponInActiveTodayOrderAsync(int couponId, int memberId);
     }
 
     public class PreOrderRepository : IPreOrderRepository
@@ -217,6 +223,36 @@ namespace EatTogether.Models.Repositories
             order.TableId = tableId;
             order.InOrOut = inOrOut;
             await _context.SaveChangesAsync();
+        }
+
+        // ── 前台重複使用防呆 ──────────────────────────────────────────────
+
+        public async Task<HashSet<int>> GetUsedEventIdsTodayByMemberAsync(int memberId)
+        {
+            var today    = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+            var ids = await _context.PreOrders
+                .Where(p => p.MemberId == memberId
+                         && p.EventId != null
+                         && p.DoneOrCancel != 2          // 未取消
+                         && p.OrderAt >= today
+                         && p.OrderAt < tomorrow)
+                .Select(p => p.EventId!.Value)
+                .Distinct()
+                .ToListAsync();
+            return ids.ToHashSet();
+        }
+
+        public async Task<bool> IsCouponInActiveTodayOrderAsync(int couponId, int memberId)
+        {
+            var today    = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+            return await _context.PreOrders
+                .AnyAsync(p => p.MemberId  == memberId
+                            && p.CouponId  == couponId
+                            && p.DoneOrCancel != 2       // 未取消
+                            && p.OrderAt >= today
+                            && p.OrderAt < tomorrow);
         }
     }
 }

@@ -1433,9 +1433,11 @@ function confirmCouponDespiteEvent() {
 }
 
 // 使用者取消（不套用優惠券）
+// 使用者取消（不套用優惠券）→ 還原選擇器至「選擇優惠券」
 function cancelCouponWarn() {
     pendingCouponData.value = null
     couponEventWarnModal.value = false
+    resetCoupon()
 }
 
 // ── 開啟全域登入 Modal（Bootstrap #authModal）
@@ -1725,20 +1727,45 @@ async function fetchActiveEvents() {
         const autoIdSet = new Set(autoEvents.value.map((e) => e.id))
         const nearAutoIdSet = new Set(nearAutoEvents.value.map((e) => e.id))
         const hasBest = !!bestAutoEvent.value
+        const bestId = bestAutoEvent.value?.id
 
-        // ── 清除失效的訪客 autoEvent toast（已登入 or 事件已失效）──
+        // ── 所有已達門檻的活動（auto + notify eligible），按 minSpend 降序排列
+        // overallBestId = 門檻最高的那個，只有它才顯示「過門檻」eligible-notify toast
+        const allEligibleSorted = [
+            ...autoEvents.value,
+            ...notifyEvents.value.filter((e) => e.isEligible),
+        ].sort((a, b) => b.minSpend - a.minSpend)
+        const overallBestId = allEligibleSorted[0]?.id ?? null
+
+        // 有 ≥ 2 個活動達標 → 需要顯示「不得合併使用」警語
+        const hasMultipleEligible = allEligibleSorted.length > 1
+
+        // ── 清除：訪客 autoEvent 的 eligible-notify，只保留 overallBest ──
         for (const [id, key] of _guestAutoKeys) {
-            if (!autoIdSet.has(id) || isLoggedIn.value) {
+            if (!autoIdSet.has(id) || isLoggedIn.value || id !== overallBestId) {
                 dismissToast(key)
                 _guestAutoKeys.delete(id)
             }
         }
 
-        // ── 清除失效的差額 toast（事件已達門檻 or 差額回到>100）──
+        // ── 清除：notifyEvent 的 eligible-notify，只保留 overallBest ──
+        for (const [id, key] of _eligibleNotifyKeys) {
+            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
+            if (!stillEligible || id !== overallBestId) {
+                dismissToast(key)
+                _eligibleNotifyKeys.delete(id)
+            }
+        }
+
+        // ── 清除失效的差額 toast（事件不再差額≤100）──
         for (const [id, key] of _nearToastKeys) {
             const stillNearAuto = nearAutoIdSet.has(id)
             const stillNearNotify = notifyEvents.value.some(
-                (e) => e.id === id && !e.isEligible && e.minSpend - total.value <= 100
+                (e) =>
+                    e.id === id &&
+                    !e.isEligible &&
+                    e.minSpend - total.value > 0 &&
+                    e.minSpend - total.value <= 100
             )
             if (!stillNearAuto && !stillNearNotify) {
                 dismissToast(key)
@@ -1746,36 +1773,30 @@ async function fetchActiveEvents() {
             }
         }
 
-        // ── 清除失效的 eligible-notify toast（事件已不符合 or bestAutoEvent 出現）──
-        for (const [id, key] of _eligibleNotifyKeys) {
-            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
-            if (!stillEligible || hasBest) {
-                dismissToast(key)
-                _eligibleNotifyKeys.delete(id)
-            }
-        }
-
-        // ── 若 bestAutoEvent 消失，清除「一個活動限制」提示 ──
-        if (!hasBest && _oneEventNoteKey !== null) {
+        // ── 清除 one-event-note：無達標活動或未滿 2 個達標時移除 ──
+        if (_oneEventNoteKey !== null && (!overallBestId || !hasMultipleEligible)) {
             dismissToast(_oneEventNoteKey)
             _oneEventNoteKey = null
         }
 
-        // ── 0. 訪客：autoEvents 達門檻 → eligible-notify toast（取代 inline 卡片）──
-        if (!isLoggedIn.value) {
-            autoEvents.value.forEach((ev) => {
-                if (!_guestAutoKeys.has(ev.id)) {
-                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
-                    _guestAutoKeys.set(ev.id, key)
-                }
+        // ── 0. 訪客：只顯示 overallBest 的 eligible-notify（若為 autoEvent）──
+        if (
+            !isLoggedIn.value &&
+            hasBest &&
+            bestId === overallBestId &&
+            !_guestAutoKeys.has(bestId)
+        ) {
+            const key = pushToast(bestAutoEvent.value, {
+                persistent: true,
+                type: 'eligible-notify',
             })
+            _guestAutoKeys.set(bestId, key)
         }
 
-        // ── 1. nearAutoEvents（IsAutoDiscount=1，差額≤100）→ 差額 toast ──
+        // ── 1. nearAutoEvents（差額≤100）→ 差額 toast ──
         nearAutoEvents.value.forEach((ev) => {
             if (!_nearToastKeys.has(ev.id)) {
-                const key = pushToast(ev, { persistent: true, type: 'near' })
-                _nearToastKeys.set(ev.id, key)
+                _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
             }
         })
 
@@ -1783,28 +1804,27 @@ async function fetchActiveEvents() {
         notifyEvents.value.forEach((ev) => {
             const gap = ev.minSpend - total.value
             if (ev.isEligible) {
-                // 達門檻：dismiss 其差額 toast
+                // 已達門檻 → 清差額 toast
                 const nearKey = _nearToastKeys.get(ev.id)
                 if (nearKey !== undefined) {
                     dismissToast(nearKey)
                     _nearToastKeys.delete(ev.id)
                 }
-                // 無 bestAutoEvent 才顯示「恭喜」toast
-                if (!hasBest && !_eligibleNotifyKeys.has(ev.id)) {
-                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
-                    _eligibleNotifyKeys.set(ev.id, key)
+                // 只有 overallBest 才顯示 eligible-notify，避免多個達標同時顯示
+                if (ev.id === overallBestId && !_eligibleNotifyKeys.has(ev.id)) {
+                    _eligibleNotifyKeys.set(
+                        ev.id,
+                        pushToast(ev, { persistent: true, type: 'eligible-notify' })
+                    )
                 }
-            } else if (gap <= 100 && !_nearToastKeys.has(ev.id)) {
-                // 差額≤100：差額 toast
-                const key = pushToast(ev, { persistent: true, type: 'near' })
-                _nearToastKeys.set(ev.id, key)
+            } else if (gap > 0 && gap <= 100 && !_nearToastKeys.has(ev.id)) {
+                // 差額 > 0 且 ≤ 100 → 差額 toast（防止負值）
+                _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
             }
         })
 
-        // ── 3. bestAutoEvent 存在且有其他符合活動 → 「一個活動限制」提示（僅一次）──
-        const hasOtherEligible =
-            notifyEvents.value.some((e) => e.isEligible) || autoEvents.value.length > 1
-        if (hasBest && hasOtherEligible && _oneEventNoteKey === null) {
+        // ── 3. 有 ≥ 2 個活動達標 → 「每次用餐只能參加一個活動」警語 ──
+        if (overallBestId && hasMultipleEligible && _oneEventNoteKey === null) {
             _oneEventNoteKey = pushToast(
                 { id: -1, title: '', discountDescription: '' },
                 { persistent: true, type: 'one-event-note' }
@@ -1920,8 +1940,8 @@ async function openCartItemEdit(item) {
 
 function onDetailConfirm(dish, qty, note) {
     if (editingLineId.value !== null) {
-        // ── 編輯模式：先移除舊 line，再以新 qty/note 加入（自動合併同名 line）──
-        store.removeLineItem(editingLineId.value)
+        // ── 編輯模式：先完整刪除舊 line，再以新 qty/note 加入（自動合併同名 line）──
+        store.deleteLine(editingLineId.value)
         for (let i = 0; i < qty; i++) store.addItem(dish.productId, note || '')
         showToast(`「${dish.productName}」已更新`)
         editingLineId.value = null

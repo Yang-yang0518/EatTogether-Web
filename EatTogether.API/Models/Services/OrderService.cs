@@ -1744,23 +1744,35 @@ namespace EatTogether.Models.Services
                 var noteDto = OrderNoteHelper.Parse(o.PreOrder?.Note);
 
                 // 統一使用 PreOrderDetails 作為品項來源（含 IsSetMeal / ParentDetailId 等完整欄位）
-                // 只取父項目（ParentDetailId == null）且未取消（DoneOrCancel != 2）
-                var itemSource = (o.PreOrder?.PreOrderDetails ?? Enumerable.Empty<PreOrderDetail>())
-                    .Where(d => d.DoneOrCancel != 2 && !d.ParentDetailId.HasValue)
+                var allDetails = (o.PreOrder?.PreOrderDetails ?? Enumerable.Empty<PreOrderDetail>())
+                    .Where(d => d.DoneOrCancel != 2)
                     .OrderBy(d => d.Id)
                     .ToList();
+
+                var parentItems = allDetails.Where(d => !d.ParentDetailId.HasValue).ToList();
+                var childItems  = allDetails.Where(d =>  d.ParentDetailId.HasValue).ToList();
 
                 return new MemberOrderHistoryDto
                 {
                     OrderNumber = o.OrderNumber,
                     OrderAt = o.OrderAt,
                     OrderNote = noteDto.Order ?? "",
-                    Items = itemSource.Select(d => new MemberOrderItemDto
+                    Items = parentItems.Select(d => new MemberOrderItemDto
                     {
                         ProductName = d.ProductName,
                         Qty = d.Qty,
                         IsSetMeal = d.IsSetMeal,
                         Note = noteDto.Items?.GetValueOrDefault(d.ProductName),
+                        SubItems = d.IsSetMeal
+                            ? childItems
+                                .Where(c => c.ParentDetailId == d.Id)
+                                .Select(c => new MemberOrderSubItemDto
+                                {
+                                    ProductName = c.ProductName,
+                                    Qty = c.Qty,
+                                })
+                                .ToList()
+                            : new(),
                     }).ToList()
                 };
             }).ToList();
@@ -1782,7 +1794,7 @@ namespace EatTogether.Models.Services
                 if (string.IsNullOrEmpty(note.CustomerName) && !string.IsNullOrEmpty(note.Order))
                 {
                     var nameM  = Regex.Match(note.Order, @"取餐人[：:]\s*(\S+)");
-                    var phoneM = Regex.Match(note.Order, @"聯絡電話[：:]\s*(\S+)");
+                    var phoneM = Regex.Match(note.Order, @"(?:聯絡)?電話[：:]\s*(\S+)");
                     var timeM  = Regex.Match(note.Order, @"取餐時間[：:]\s*(\S+)");
                     if (nameM.Success)  note.CustomerName  = nameM.Groups[1].Value;
                     if (phoneM.Success) note.CustomerPhone = phoneM.Groups[1].Value;

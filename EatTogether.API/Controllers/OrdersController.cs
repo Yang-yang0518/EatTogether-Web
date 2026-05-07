@@ -12,15 +12,17 @@ namespace EatTogether.API.Controllers
     [Route("api/[controller]")]
     public class OrdersController : Controller
     {
-        private readonly IOrderService     _service;
-        private readonly CouponService     _couponService;
-        private readonly IEventRepository  _eventRepo;
+        private readonly IOrderService        _service;
+        private readonly CouponService        _couponService;
+        private readonly IEventRepository     _eventRepo;
+        private readonly IPreOrderRepository  _preOrderRepo;
 
-        public OrdersController(IOrderService service, CouponService couponService, IEventRepository eventRepo)
+        public OrdersController(IOrderService service, CouponService couponService, IEventRepository eventRepo, IPreOrderRepository preOrderRepo)
         {
             _service       = service;
             _couponService = couponService;
             _eventRepo     = eventRepo;
+            _preOrderRepo  = preOrderRepo;
         }
 
         [HttpGet("Tables")]
@@ -93,6 +95,20 @@ namespace EatTogether.API.Controllers
             var autoEvents      = await _eventRepo.GetApplicableEventsAsync(amount);
             var notifyEvents    = await _eventRepo.GetNotifyEventsAsync(amount);
             var nearAutoEvents  = await _eventRepo.GetNearThresholdAutoEventsAsync(amount);
+
+            // 已登入：過濾掉同會員當日已套用（未取消）的活動
+            var memberIdStr = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(memberIdStr, out var memberId))
+            {
+                var usedIds = await _preOrderRepo.GetUsedEventIdsTodayByMemberAsync(memberId);
+                if (usedIds.Count > 0)
+                {
+                    autoEvents     = autoEvents    .Where(e => !usedIds.Contains(e.Id)).ToList();
+                    notifyEvents   = notifyEvents  .Where(e => !usedIds.Contains(e.Id)).ToList();
+                    nearAutoEvents = nearAutoEvents.Where(e => !usedIds.Contains(e.Id)).ToList();
+                }
+            }
+
             return Ok(new { autoEvents, notifyEvents, nearAutoEvents });
         }
 
