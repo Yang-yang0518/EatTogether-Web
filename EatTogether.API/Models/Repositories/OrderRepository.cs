@@ -7,7 +7,11 @@ namespace EatTogether.Models.Repositories
     {
         Task AddWithPaymentAsync(Order order, Payment payment);
         Task<List<Order>> GetRecentByMemberIdAsync(int memberId, int take = 5);
-    }
+
+		// ── 前台會員中心訂單紀錄頁專用 ────────────────
+		Task<List<Order>> GetPagedByMemberIdAsync(int memberId, int page, int pageSize, DateTime? dateFrom, DateTime? dateTo);
+		Task<int> GetTotalCountByMemberIdAsync(int memberId, DateTime? dateFrom, DateTime? dateTo);
+	}
     public class OrderRepository : IOrderRepository 
     {
         private readonly EatTogetherDBContext _context;
@@ -38,5 +42,42 @@ namespace EatTogether.Models.Repositories
                 .Take(take)
                 .ToListAsync();
         }
-    }
+
+		// ── 前台會員中心訂單紀錄頁專用 ────────────────
+		public async Task<List<Order>> GetPagedByMemberIdAsync(int memberId, int page, int pageSize, DateTime? dateFrom, DateTime? dateTo)
+		{
+			var query = _context.Orders
+				.Include(o => o.PreOrder)
+					.ThenInclude(po => po.PreOrderDetails)
+				.Include(o => o.PreOrder.Event)
+				.Include(o => o.Coupon)
+				.Where(o => o.MemberId == memberId);
+
+			if (dateFrom.HasValue)
+				query = query.Where(o => o.OrderAt >= dateFrom.Value);
+
+			if (dateTo.HasValue)
+				query = query.Where(o => o.OrderAt < dateTo.Value.AddDays(1));
+
+			return await query
+				.OrderByDescending(o => o.OrderAt)
+				.Skip((page - 1) * pageSize)
+				.Take(pageSize)
+				.ToListAsync();
+		}
+
+		public async Task<int> GetTotalCountByMemberIdAsync(int memberId, DateTime? dateFrom, DateTime? dateTo)
+		{
+			var query = _context.Orders
+				.Where(o => o.MemberId == memberId);
+
+			if (dateFrom.HasValue)
+				query = query.Where(o => o.OrderAt >= dateFrom.Value);
+
+			if (dateTo.HasValue)
+				query = query.Where(o => o.OrderAt < dateTo.Value.AddDays(1));
+
+			return await query.CountAsync();
+		}
+	}
 }
