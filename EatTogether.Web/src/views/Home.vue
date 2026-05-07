@@ -45,19 +45,20 @@
                     <div class="brand-text-wrap">
                         <span class="since-label">Since 1924</span>
                         <h2 class="eat-h1 mb-0">
-                            傳承百年的<br /><em>時光風味</em>
+                            傳承百年的<br class="d-none d-md-block" />時光風味
                         </h2>
+                        <p class="hero-subtitle mb-0">義起吃品牌故事</p>
                         <div class="feather-divider on-low"></div>
-                        <p class="brand-body-text mb-3">
+                        <p class="brand-body-text fst-normal mb-3">
                             「義起吃」不僅僅是一家餐廳，它是義大利薩爾迪尼亞的延伸。每一道料理都承載著托斯卡尼燭光的溫暖，以及拿坡里海洋沁涼的氣息。
                         </p>
-                        <p class="brand-body-text">
+                        <p class="brand-body-text fst-normal">
                             我們堅持使用義大利邊境進口的頂級麵粉與百年特種橄欖油，由廚店主廚每日手工製麵糰，在濃厚的燭光氛圍中，為您獻上最純粹的歌式美饌。
                         </p>
-                        <RouterLink to="/about" class="brand-link">
+                        <!-- <RouterLink to="/about" class="brand-link">
                             探索我們的故事
                             <span class="brand-link-arrow">→</span>
-                        </RouterLink>
+                        </RouterLink> -->
                     </div>
                 </div>
             </div>
@@ -80,7 +81,6 @@
         <!-- 全寬 Swiper -->
         <div class="swiper swiper-dishes">
             <div class="swiper-wrapper">
-
                 <!-- Slide 0：影片 -->
                 <div class="swiper-slide" data-swiper-autoplay="8000">
                     <video
@@ -95,33 +95,35 @@
                         <source :src="videoSrc" type="video/mp4" />
                     </video>
                     <!-- 影片載入失敗 fallback -->
-                    <div
-                        class="slide-bg slide-fallback-bg"
-                        v-show="videoError"
-                    ></div>
+                    <div class="slide-bg slide-fallback-bg" v-show="videoError"></div>
                     <div class="slide-overlay"></div>
                     <div class="slide-content">
-                        <span class="slide-badge" style="background:rgba(212,175,55,0.22);border-color:rgba(212,175,55,0.55);color:#e3c76b;">精選影片</span>
+                        <span
+                            class="slide-badge"
+                            style="
+                                background: rgba(212, 175, 55, 0.22);
+                                border-color: rgba(212, 175, 55, 0.55);
+                                color: #e3c76b;
+                            "
+                            >精選影片</span
+                        >
                         <h3 class="slide-title">義式風味饗宴</h3>
-                        <p class="slide-desc">走進義大利，感受每一道料理背後的百年溫度與職人工藝。</p>
+                        <p class="slide-desc">走進義大利，感受每一道料理背後的百年溫度與職人工藝</p>
                     </div>
                 </div>
 
                 <!-- Slide 1+：餐點圖片（原本資料不動） -->
-                <div
-                    class="swiper-slide"
-                    v-for="dish in dishes"
-                    :key="dish.id"
-                >
+                <div class="swiper-slide" v-for="dish in dishes" :key="dish.id">
                     <div class="slide-bg" :style="{ backgroundImage: `url(${dish.img})` }"></div>
                     <div class="slide-overlay"></div>
                     <div class="slide-content">
-                        <span v-if="dish.badge" class="slide-badge" :style="dish.badgeStyle">{{ dish.badge }}</span>
+                        <span v-if="dish.badge" class="slide-badge" :style="dish.badgeStyle">{{
+                            dish.badge
+                        }}</span>
                         <h3 class="slide-title">{{ dish.name }}</h3>
                         <p class="slide-desc">{{ dish.desc }}</p>
                     </div>
                 </div>
-
             </div>
             <div class="swiper-pagination"></div>
         </div>
@@ -144,9 +146,7 @@
         <div class="reserve-content">
             <span class="reserve-eyebrow">Reserve a Table</span>
             <h2 class="eat-h1 mb-3">為您的特別時刻，<br />預留一個燭光席位</h2>
-            <p class="reserve-body">
-                不論是浪漫約會或友好聚餐，我們都將為您呈現最難忘的歌式之夜。
-            </p>
+            <p class="reserve-body">不論是浪漫約會或友好聚餐，我們都將為您呈現最難忘的歌式之夜</p>
             <Button variant="primary" to="/reservation">
                 <svg
                     width="14"
@@ -171,7 +171,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { RouterLink } from 'vue-router'
+// import { RouterLink } from 'vue-router'
 import Swiper from 'swiper'
 import { Pagination, Autoplay, EffectFade } from 'swiper/modules'
 import 'swiper/css'
@@ -207,7 +207,7 @@ async function fetchDishes() {
         // 分類過濾邏輯：每個分類只取前 3 筆，並保持原始順序
         const filteredData = []
         const categoryCount = {}
-        data.forEach(item => {
+        data.forEach((item) => {
             const cid = item.categoryId
             if (!categoryCount[cid]) categoryCount[cid] = 0
             if (categoryCount[cid] < 3) {
@@ -230,10 +230,18 @@ async function fetchDishes() {
             let badgeStyle = {}
             if (item.isRecommended) {
                 badge = '推薦'
-                badgeStyle = { background: 'rgba(212,175,55,0.22)', borderColor: 'rgba(212,175,55,0.55)', color: '#e3c76b' }
+                badgeStyle = {
+                    background: 'rgba(212,175,55,0.22)',
+                    borderColor: 'rgba(212,175,55,0.55)',
+                    color: '#e3c76b',
+                }
             } else if (item.isPopular) {
                 badge = '人氣'
-                badgeStyle = { background: 'rgba(210,100,30,0.22)', borderColor: 'rgba(210,100,30,0.55)', color: '#e8854a' }
+                badgeStyle = {
+                    background: 'rgba(210,100,30,0.22)',
+                    borderColor: 'rgba(210,100,30,0.55)',
+                    color: '#e8854a',
+                }
             } else if (item.isLimited) {
                 badge = '限定'
                 badgeStyle = {}
@@ -246,7 +254,7 @@ async function fetchDishes() {
                 img: finalImg,
                 desc: item.description || '道地義式風味，主廚嚴選推薦。',
                 badge,
-                badgeStyle
+                badgeStyle,
             }
         })
 
@@ -265,8 +273,8 @@ async function fetchDishes() {
                     price: '0',
                     img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
                     desc: `請檢查 API 路徑是否正確：${endpoint}`,
-                    badge: '錯誤'
-                }
+                    badge: '錯誤',
+                },
             ]
             await nextTick()
             initSwiper()
@@ -540,15 +548,19 @@ onUnmounted(() => {
     inset: 0;
     background-size: cover;
     background-position: center;
-    transform: scale(1.0);
+    transform: scale(1);
     will-change: transform;
 }
 :deep(.swiper-slide-active) .slide-bg {
     animation: kenBurns 6s ease forwards;
 }
 @keyframes kenBurns {
-    from { transform: scale(1.0); }
-    to   { transform: scale(1.05); }
+    from {
+        transform: scale(1);
+    }
+    to {
+        transform: scale(1.05);
+    }
 }
 
 /* 遮罩 */
@@ -579,8 +591,14 @@ onUnmounted(() => {
     animation: slideTextIn 0.65s 0.1s ease forwards;
 }
 @keyframes slideTextIn {
-    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
-    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }
 .slide-badge {
     display: inline-block;
@@ -648,11 +666,7 @@ onUnmounted(() => {
 .reserve-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(24, 11, 6, 0.88) 0%,
-        rgba(30, 16, 11, 0.72) 100%
-    );
+    background: linear-gradient(135deg, rgba(24, 11, 6, 0.88) 0%, rgba(30, 16, 11, 0.72) 100%);
 }
 .reserve-glow {
     position: absolute;

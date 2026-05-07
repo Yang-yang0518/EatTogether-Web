@@ -64,7 +64,9 @@
 .feather-divider.on-container::after {
     background: var(--eat-surface-container);
 }
-
+.feather-divider.on-low::after {
+    background: var(--eat-surface-low);
+}
 /* ── Candle Glow（燭光背景光暈，裝飾用）────────────── */
 /* 用法：<div class="candle-glow"></div>                */
 /* 通常搭配 position: relative 的父層使用              */
