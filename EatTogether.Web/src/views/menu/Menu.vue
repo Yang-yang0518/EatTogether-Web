@@ -583,53 +583,36 @@ const loadFavorites = async () => {
             }
         } catch { /* fall through */ }
     }
-    favorites.value = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
+    favorites.value = []
 }
 
 const toggleFavorite = async (dishId) => {
+    if (!authStore.isLoggedIn) {
+        show('請先登入才能收藏', 'info')
+        Modal.getOrCreateInstance(document.querySelector('#authModal')).show()
+        return
+    }
     const isFav = favorites.value.includes(dishId)
-
-    if (authStore.isLoggedIn) {
-        try {
-            const res = await apiFetch(`/Favorites/${dishId}`, { method: isFav ? 'DELETE' : 'POST' })
-            if (!res.ok) throw new Error()
-            if (isFav) {
-                favorites.value = favorites.value.filter(id => id !== dishId)
-                show('🤍 已取消收藏', 'info')
-            } else {
-                favorites.value.push(dishId)
-                show('❤️ 已加入收藏', 'success')
-            }
-        } catch {
-            show('操作失敗，請稍後再試', 'error')
-        }
-    } else {
-        const idx = favorites.value.indexOf(dishId)
-        if (idx === -1) {
+    try {
+        const res = await apiFetch(`/Favorites/${dishId}`, { method: isFav ? 'DELETE' : 'POST' })
+        if (!res.ok) throw new Error()
+        if (isFav) {
+            favorites.value = favorites.value.filter(id => id !== dishId)
+            show('🤍 已取消收藏', 'info')
+        } else {
             favorites.value.push(dishId)
             show('❤️ 已加入收藏', 'success')
-        } else {
-            favorites.value.splice(idx, 1)
-            show('🤍 已取消收藏', 'info')
         }
-        localStorage.setItem('menu-favorites', JSON.stringify(favorites.value))
+    } catch {
+        show('操作失敗，請稍後再試', 'error')
     }
 }
 
-// 登入後把 localStorage 收藏同步到伺服器
 watch(() => authStore.isLoggedIn, async (loggedIn) => {
     if (loggedIn) {
-        const local = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
-        if (local.length > 0) {
-            await apiFetch('/Favorites/Sync', {
-                method: 'POST',
-                body: JSON.stringify(local),
-            })
-            localStorage.removeItem('menu-favorites')
-        }
         await loadFavorites()
     } else {
-        favorites.value = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
+        favorites.value = []
     }
 })
 
