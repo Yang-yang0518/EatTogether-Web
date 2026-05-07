@@ -74,7 +74,10 @@ namespace EatTogether.Models.Services
         Task<List<MemberOrderHistoryDto>> GetMemberOrderHistoryAsync(int memberId);
         // 前台外帶訂單查詢（依訂單編號 / 姓名 / 電話擇一）
         Task<List<OrderLookupResultDto>> QueryTodayPendingTakeoutAsync(string type, string q);
-    }
+
+		// ── 前台會員中心訂單紀錄頁專用 ────────────────
+		Task<MemberOrderPagedResultDto> GetPagedOrdersAsync(int memberId, int page, int pageSize, DateTime? dateFrom, DateTime? dateTo);
+	}
 
     public class OrderService : IOrderService
     {
@@ -1864,5 +1867,49 @@ namespace EatTogether.Models.Services
 
             return results;
         }
-    }
+
+		// ── 前台會員中心訂單紀錄頁專用 ────────────────
+		public async Task<MemberOrderPagedResultDto> GetPagedOrdersAsync(int memberId, int page, int pageSize, DateTime? dateFrom, DateTime? dateTo)
+		{
+			var totalCount = await _orderRepo.GetTotalCountByMemberIdAsync(memberId, dateFrom, dateTo);
+			var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+			var orders = await _orderRepo.GetPagedByMemberIdAsync(memberId, page, pageSize, dateFrom, dateTo);
+
+			var items = orders.Select(o =>
+			{
+				var itemSource = (o.PreOrder?.PreOrderDetails ?? Enumerable.Empty<PreOrderDetail>())
+					.Where(d => d.DoneOrCancel != 2 && !d.ParentDetailId.HasValue)
+					.OrderBy(d => d.Id)
+					.ToList();
+
+				return new MemberOrderSummaryDto
+				{
+					OrderNumber = o.OrderNumber,
+					OrderAt = o.OrderAt,
+					TotalAmount = o.TotalAmount,
+					OriginalAmount = o.OriginalAmount,
+					DiscountAmount = o.DiscountAmount,
+					CouponCode = o.Coupon?.Code,
+					EventTitle = o.PreOrder?.Event?.Title,
+					PayMethod = o.PayMethod ?? "",
+					InOrOut = o.InOrOut,
+					Items = itemSource.Select(d => new MemberOrderItemDto
+					{
+						ProductName = d.ProductName,
+						Qty = d.Qty,
+						IsSetMeal = d.IsSetMeal,
+						UnitPrice = d.UnitPrice,
+					}).ToList(),
+				};
+			}).ToList();
+
+			return new MemberOrderPagedResultDto
+			{
+				Items = items,
+				TotalCount = totalCount,
+				TotalPages = totalPages,
+			};
+		}
+	}
 }

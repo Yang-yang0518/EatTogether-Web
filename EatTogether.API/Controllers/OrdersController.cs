@@ -141,5 +141,24 @@ namespace EatTogether.API.Controllers
             var history = await _service.GetMemberOrderHistoryAsync(id);
             return Ok(history);
         }
-    }
+
+		// ── 前台會員中心訂單紀錄頁專用 ────────────────
+		[Authorize]
+		[HttpGet("~/api/members/me/orders")]
+		public async Task<IActionResult> GetMyOrders(
+			[FromQuery] int page = 1,
+			[FromQuery] int pageSize = 10,
+			[FromQuery] DateTime? dateFrom = null,
+			[FromQuery] DateTime? dateTo = null)
+		{
+			var memberIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+							 ?? User.FindFirstValue("sub");
+
+			if (!int.TryParse(memberIdClaim, out int memberId))
+				return Unauthorized();
+
+			var result = await _service.GetPagedOrdersAsync(memberId, page, pageSize, dateFrom, dateTo);
+			return Ok(result);
+		}
+	}
 }
