@@ -319,13 +319,14 @@
                         <!-- 特殊分類(今日推薦/主廚特選)與一般分類(全部/套餐…)之間的分隔線 -->
                         <div
                             v-if="
-                                idx > 0 &&
+                                cat.isDividerBefore ||
+                                (idx > 0 &&
                                 !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
                                     cat.key
                                 ) &&
                                 ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
                                     sidebarCategories[idx - 1].key
-                                )
+                                ))
                             "
                             class="cat-divider"
                         ></div>
@@ -1166,7 +1167,7 @@
                 :initial-qty="
                     editingLineId !== null
                         ? (cartItemsWithDetails.find((i) => i.lineId === editingLineId)?.qty ?? 1)
-                        : 1
+                        : (activeDetail?.defaultQty ?? 1)
                 "
                 :initial-note="
                     editingLineId !== null
@@ -1192,8 +1193,8 @@
                     ? (store.lines.find((l) => l.lineId === editingMealLineId)?.note ?? '')
                     : ''
             "
-            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : {}"
-            @close="(activeMeal = null)((editingMealLineId = null))"
+            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : demoMealInitialSel"
+            @close="((activeMeal = null), (editingMealLineId = null), (demoMealInitialSel = {}))"
             @confirm="onSetMealConfirm"
         />
 
@@ -1282,6 +1283,7 @@ const editingLineId = ref(null) // null = 新增模式，有值 = 編輯模式
 // ── 套餐選項 Modal ──────────────────────────────────────────────
 const activeMeal = ref(null) // 目前開啟的套餐資料（API 回傳）
 const editingMealLineId = ref(null) // 套餐編輯模式的 lineId
+const demoMealInitialSel = ref({})
 const successModalOpen = ref(false)
 const orderNumber = ref('')
 const submitting = ref(false)
@@ -1545,6 +1547,23 @@ function resolveImage(url) {
     return `/${path.replace(/^\//, '')}`
 }
 
+// ── 展示用分類（從真實 products 過濾，保留真實 productId / setMealId / 價格）──
+const DEMO_CATEGORY_KEY = '展示'
+const DEMO_SPECS = [
+    { name: '香烤雞腿排',   defaultQty: 1 },
+    { name: '全家分享餐',   defaultQty: 1 },
+    { name: '奶油培根燉飯', defaultQty: 3 },
+    { name: '瑪格麗特披薩', defaultQty: 1 },
+]
+const demoDishes = computed(() =>
+    DEMO_SPECS
+        .map(({ name, defaultQty }) => {
+            const p = products.value.find((p) => p.productName === name)
+            return p ? { ...p, defaultQty } : null
+        })
+        .filter(Boolean)
+)
+
 // 一般分類排序（特殊的今日推薦/主廚特選不在此列）
 const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲料']
 
@@ -1589,7 +1608,12 @@ const sidebarCategories = computed(() => {
     // 全部：放在分隔線後、一般分類前
     const allEntry = { key: '全部', label: '全部', count: products.value.length }
 
-    return [...specials, allEntry, ...cats]
+    return [
+        ...specials,
+        allEntry,
+        ...cats,
+        { key: DEMO_CATEGORY_KEY, label: DEMO_CATEGORY_KEY, count: demoDishes.value.length, isDividerBefore: true },
+    ]
 })
 
 const filteredProducts = computed(() => {
@@ -1639,6 +1663,10 @@ const displaySections = computed(() => {
             label: cat,
             dishes: filteredProducts.value.filter((p) => p.categoryName === cat),
         })).filter((s) => s.dishes.length > 0)
+    }
+    // 展示分類
+    if (activeSidebarCat.value === DEMO_CATEGORY_KEY) {
+        return [{ key: DEMO_CATEGORY_KEY, label: DEMO_CATEGORY_KEY, dishes: demoDishes.value }]
     }
     // 一般分類
     const dishes = filteredProducts.value.filter((p) => p.categoryName === activeSidebarCat.value)
@@ -1909,7 +1937,13 @@ async function openDetail(dish) {
         editingMealLineId.value = null
         try {
             const res = await apiFetch(`/SetMeals/${dish.setMealId}`)
-            if (res.ok) activeMeal.value = await res.json()
+            if (res.ok) {
+                const meal = await res.json()
+                activeMeal.value = meal
+                // 展示用套餐：內用從尾選
+                const isDemo = demoDishes.value.some((d) => d.productId === dish.productId)
+                demoMealInitialSel.value = isDemo ? buildDemoInitialSel(meal, true) : {}
+            }
         } catch {
             /* 靜默 */
         }
@@ -1963,6 +1997,30 @@ function buildInitialSel(lineId) {
         // 先存在 dishId key 下，SetMealSelectModal 的 watch 會在 meal 載入後處理
         sel[opt.groupNo ?? 0] = sel[opt.groupNo ?? 0] ?? {}
         sel[opt.groupNo ?? 0][opt.dishId] = opt.qty
+    }
+    return sel
+}
+
+// 展示用套餐預選（TakeOut 從頭選，DineIn 從尾選）
+function buildDemoInitialSel(meal, fromEnd = false) {
+    const groupMap = {}
+    for (const item of meal.items ?? []) {
+        if (!item.isOptional) continue
+        const gno = item.optionGroupNo
+        if (!groupMap[gno]) groupMap[gno] = { groupNo: gno, pickLimit: item.pickLimit, options: [] }
+        groupMap[gno].options.push(item)
+    }
+    const sel = {}
+    for (const group of Object.values(groupMap)) {
+        const limit = group.pickLimit ?? 1
+        const opts = fromEnd ? [...group.options].reverse() : group.options
+        let picked = 0
+        sel[group.groupNo] = {}
+        for (const opt of opts) {
+            if (picked >= limit) break
+            sel[group.groupNo][opt.dishId] = 1
+            picked++
+        }
     }
     return sel
 }

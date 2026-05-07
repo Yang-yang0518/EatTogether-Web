@@ -107,13 +107,14 @@
                     <template v-for="(cat, idx) in sidebarCategories" :key="cat.key">
                         <div
                             v-if="
-                                idx > 0 &&
-                                !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
-                                    cat.key
-                                ) &&
-                                ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
-                                    sidebarCategories[idx - 1].key
-                                )
+                                cat.isDividerBefore ||
+                                (idx > 0 &&
+                                    !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
+                                        cat.key
+                                    ) &&
+                                    ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
+                                        sidebarCategories[idx - 1].key
+                                    ))
                             "
                             class="cat-divider"
                         ></div>
@@ -1463,7 +1464,7 @@
             :initial-qty="
                 editingLineId !== null
                     ? (cartItemsWithDetails.find((i) => i.lineId === editingLineId)?.qty ?? 1)
-                    : 1
+                    : (activeDetail?.defaultQty ?? 1)
             "
             :initial-note="
                 editingLineId !== null
@@ -1488,8 +1489,10 @@
                     ? (store.lines.find((l) => l.lineId === editingMealLineId)?.note ?? '')
                     : ''
             "
-            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : {}"
-            @close="((activeMeal = null), (editingMealLineId = null))"
+            :initial-sel="
+                editingMealLineId !== null ? buildInitialSel(editingMealLineId) : demoMealInitialSel
+            "
+            @close="((activeMeal = null), (editingMealLineId = null), (demoMealInitialSel = {}))"
             @confirm="onSetMealConfirm"
         />
 
@@ -1793,6 +1796,7 @@ const editingMealLineId = ref(null)
 const successModalOpen = ref(false)
 const orderNumber = ref('')
 const submitting = ref(false)
+const demoMealInitialSel = ref({})
 
 // ── 優惠券 ──────────────────────────────────────────
 const couponCode = ref('')
@@ -2006,6 +2010,24 @@ const finalTotal = computed(() =>
     Math.max(0, total.value - couponDiscount.value - autoEventDiscount.value)
 )
 
+// ── 展示用分類（從真實 products 過濾，保留真實 productId / setMealId / 價格）──
+const DEMO_CATEGORY_KEY = '展示'
+
+// 指定展示的餐點名稱與預設數量（defaultQty 只影響 Modal 初始值）
+const DEMO_SPECS = [
+    { name: '香烤雞腿排', defaultQty: 1 },
+    { name: '全家分享餐', defaultQty: 1 },
+    { name: '奶油培根燉飯', defaultQty: 3 },
+    { name: '瑪格麗特披薩', defaultQty: 1 },
+]
+
+const demoDishes = computed(() =>
+    DEMO_SPECS.map(({ name, defaultQty }) => {
+        const p = products.value.find((p) => p.productName === name)
+        return p ? { ...p, defaultQty } : null
+    }).filter(Boolean)
+)
+
 // ── 分類 Computed ─────────────────────────────────────
 const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲料']
 
@@ -2043,7 +2065,17 @@ const sidebarCategories = computed(() => {
         return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi)
     })
 
-    return [...specials, { key: '全部', label: '全部', count: products.value.length }, ...cats]
+    return [
+        ...specials,
+        { key: '全部', label: '全部', count: products.value.length },
+        ...cats,
+        {
+            key: DEMO_CATEGORY_KEY,
+            label: DEMO_CATEGORY_KEY,
+            count: demoDishes.value.length,
+            isDividerBefore: true,
+        },
+    ]
 })
 
 const filteredProducts = computed(() => {
@@ -2084,6 +2116,9 @@ const displaySections = computed(() => {
             label: cat,
             dishes: filteredProducts.value.filter((p) => p.categoryName === cat),
         })).filter((s) => s.dishes.length > 0)
+    }
+    if (activeSidebarCat.value === DEMO_CATEGORY_KEY) {
+        return [{ key: DEMO_CATEGORY_KEY, label: DEMO_CATEGORY_KEY, dishes: demoDishes.value }]
     }
     const dishes = filteredProducts.value.filter((p) => p.categoryName === activeSidebarCat.value)
     return dishes.length
@@ -2372,7 +2407,13 @@ async function openDetail(dish) {
         editingMealLineId.value = null
         try {
             const res = await apiFetch(`/SetMeals/${dish.setMealId}`)
-            if (res.ok) activeMeal.value = await res.json()
+            if (res.ok) {
+                const meal = await res.json()
+                activeMeal.value = meal
+                // 展示用套餐：外帶從頭選
+                const isDemo = demoDishes.value.some((d) => d.productId === dish.productId)
+                demoMealInitialSel.value = isDemo ? buildDemoInitialSel(meal, false) : {}
+            }
         } catch {
             /* 靜默 */
         }
@@ -2419,6 +2460,31 @@ function buildInitialSel(lineId) {
     for (const opt of line.setMealData.selectedOptions) {
         sel[opt.groupNo ?? 0] = sel[opt.groupNo ?? 0] ?? {}
         sel[opt.groupNo ?? 0][opt.dishId] = opt.qty
+    }
+    return sel
+}
+
+// 展示用套餐預選（TakeOut 從頭選，DineIn 從尾選）
+function buildDemoInitialSel(meal, fromEnd = false) {
+    // 先依 optionGroupNo 分組，對應 SetMealSelectModal 的 optionalGroups 邏輯
+    const groupMap = {}
+    for (const item of meal.items ?? []) {
+        if (!item.isOptional) continue
+        const gno = item.optionGroupNo
+        if (!groupMap[gno]) groupMap[gno] = { groupNo: gno, pickLimit: item.pickLimit, options: [] }
+        groupMap[gno].options.push(item)
+    }
+    const sel = {}
+    for (const group of Object.values(groupMap)) {
+        const limit = group.pickLimit ?? 1
+        const opts = fromEnd ? [...group.options].reverse() : group.options
+        let picked = 0
+        sel[group.groupNo] = {}
+        for (const opt of opts) {
+            if (picked >= limit) break
+            sel[group.groupNo][opt.dishId] = 1
+            picked++
+        }
     }
     return sel
 }
@@ -2683,11 +2749,16 @@ onMounted(async () => {
         const banH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 73
         document.documentElement.style.setProperty('--top-fixed', `${navH + banH}px`)
         // 手機版分類列（.mobile-cat-bar）固定在 step-banner 正下方
-        // 量測其高度供 toolbar sticky top 計算使用
+        // 量測其高度供 toolbar fixed top 計算使用
         await nextTick()
         const catBar = document.querySelector('.mobile-cat-bar')
         const catBarH = catBar ? Math.ceil(catBar.getBoundingClientRect().height) : 40
         document.documentElement.style.setProperty('--cat-bar-h', `${catBarH}px`)
+        // ----手機板---- 量測 toolbar 高度，讓 menu-sections 補上對應 padding-top
+        await nextTick()
+        const toolbar = document.querySelector('.toolbar')
+        const toolbarH = toolbar ? Math.ceil(toolbar.getBoundingClientRect().height) : 90
+        document.documentElement.style.setProperty('--toolbar-h', `${toolbarH}px`)
     }
 
     try {
@@ -4757,10 +4828,16 @@ onMounted(async () => {
 }
 
 /* ════════════════════════════════════════════════════
-   手機版 (max-width: 1100px)
+   ----手機板---- (max-width: 1100px)
    ════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
-    /* 單欄佈局，隱藏桌機側邊欄 */
+    /* ── out-wrap 手機板：padding-top 改為 navbar + step-banner 總高 ──
+       桌機版的 27px 只含 navbar；手機板 step-banner 也是 fixed，需一起算 */
+    .out-wrap {
+        padding-top: var(--top-fixed, 67px);
+    }
+
+    /* ── 單欄佈局，隱藏桌機側邊欄 ── */
     .out-layout {
         grid-template-columns: 1fr;
     }
@@ -4768,11 +4845,13 @@ onMounted(async () => {
         display: none;
     }
 
-    /* 手機版分類列：固定在 step-banner 正下方 */
+    /* ── 手機版分類列：固定在 step-banner 正下方 ── */
     .mobile-cat-bar {
         display: block;
-        position: sticky;
+        position: fixed;
         top: var(--top-fixed, 130px); /* navbar + step-banner 高度（JS 量測後注入） */
+        left: 0;
+        right: 0;   /* ← 明確指定全寬，overflow-x: auto 才能觸發 */
         z-index: 50;
         background: #180b06;
         border-bottom: 1px solid rgba(77, 70, 58, 0.3);
@@ -4780,6 +4859,7 @@ onMounted(async () => {
     .mobile-cat-tabs {
         display: flex;
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* iOS 慣性滑動 */
         padding: 0.4rem 0.75rem 0.55rem;
         scrollbar-width: none;
         gap: 0;
@@ -4816,17 +4896,28 @@ onMounted(async () => {
         padding: 0.05rem 0.35rem;
     }
 
-    /* 手機版搜尋列（toolbar 內）顯示 */
+    /* ── 手機版搜尋列（toolbar 內）顯示 ── */
     .mobile-search-wrap {
         display: flex;
     }
-    /* toolbar 固定在分類列正下方：step-banner 底部 + 分類列高度 */
+    /* ----手機板---- toolbar 改 fixed，確保滾動時始終固定在分類列正下方
+       sticky 在此結構（page-scroll + overflow-x:hidden 祖先）無法可靠運作 */
     .toolbar {
+        position: fixed;
         top: calc(var(--top-fixed, 130px) + var(--cat-bar-h, 40px));
+        left: 0;
+        right: 0;
+        z-index: 40; /* 低於 mobile-cat-bar(50)，高於一般內容 */
+    }
+    /* 補上 toolbar 佔用的高度，避免餐點被 toolbar 遮住（JS 量測後注入 --toolbar-h） */
+    .menu-sections {
+        padding-top: var(--toolbar-h, 90px);
     }
     .out-menu {
         min-height: auto;
     }
+
+    /* ── 購物車 bottom sheet ── */
     .out-cart {
         position: fixed;
         inset: 0;
@@ -4868,13 +4959,196 @@ onMounted(async () => {
         pointer-events: auto;
     }
     .menu-sections {
-        padding: 0 1rem 6rem;
+        padding: 5rem 1rem 6rem;
     }
     .step-page {
         padding: 1.5rem 1rem 3rem;
     }
     .step-card {
         padding: 1.5rem;
+    }
+
+    /* ════════════════════════════════════════════════════
+       ----手機板---- 餐點卡片（對齊內用手機板樣式）
+       複製自 DineIn @media (max-width: 1100px) 餐點卡片區
+       ════════════════════════════════════════════════════ */
+
+    /* ── 列表視圖卡片 ── */
+    .dish-row {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        align-items: stretch;
+        background: #362620;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition:
+            transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.45s ease;
+    }
+    .dish-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+    .dish-row.dish-row-grid {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .dish-img {
+        width: 110px;
+        height: 90px;
+        object-fit: cover;
+        align-self: center;
+        display: block;
+        flex-shrink: 0;
+        transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dish-row:hover .dish-img {
+        transform: scale(1.05);
+    }
+    .dish-row-grid .dish-img {
+        width: 100%;
+        height: 110px;
+    }
+    .dish-img-placeholder {
+        width: 110px;
+        height: 90px;
+        align-self: center;
+        background: #2b1c16;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: rgba(208, 197, 181, 0.15);
+        font-size: 1.8rem;
+    }
+    .dish-row-grid .dish-img-placeholder {
+        width: 100%;
+        height: 110px;
+    }
+    .dish-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0.5rem 0.6rem;
+    }
+    .dish-content-grid {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: center;
+    }
+    .dish-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin: 0.4rem 0;
+    }
+    .dish-content-grid .dish-badges {
+        justify-content: center;
+    }
+    .grid-footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0 0.75rem;
+        border-top: 1px solid rgba(77, 70, 58, 0.25);
+    }
+    .grid-price {
+        color: #d5b478;
+        font-size: 1rem;
+        letter-spacing: 0.08em;
+        text-align: center;
+    }
+    .list-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 0.4rem;
+    }
+    .list-footer p {
+        margin: 0;
+        line-height: 1;
+    }
+    .qty-col {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .qty-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.8rem;
+        margin-top: auto;
+    }
+    .qty-num {
+        color: #f9ddd3;
+        width: 30px;
+        text-align: center;
+    }
+    .qty-num.active {
+        color: #e3c76b;
+    }
+
+    /* ── 網格視圖卡片 ── */
+    .dishes-wrap.grid-view {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.5rem;
+    }
+    .dish-row-grid .dish-name {
+        font-size: 0.95rem;
+        text-align: center;
+        width: 100%;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* ── 餐點名稱 ── */
+    .dish-name {
+        font-size: 1rem;
+    }
+
+    /* ── 區塊標題 ── */
+    .section-title {
+        font-family: 'Noto Serif TC', serif;
+        font-style: italic;
+        font-size: 1.4rem;
+        color: #e3c76b;
+        padding-top: 0;
+        margin-bottom: 0.6rem;
+    }
+
+    /* ── 數量按鈕 ── */
+    .qty-btn {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        width: 26px;
+        height: 26px;
+        border: 1px solid rgba(77, 70, 58, 0.7);
+        background: #2b1c16;
+        color: #f9ddd3;
+        border-radius: 0.125rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        line-height: 1;
+        transition:
+            border-color 0.3s,
+            color 0.3s;
+    }
+    .qty-btn:hover {
+        border-color: #e3c76b;
+        color: #e3c76b;
     }
 }
 
@@ -4885,6 +5159,9 @@ onMounted(async () => {
     /* step-banner 縮短左右 padding */
     .step-banner {
         padding: 0.5rem 1rem;
+        margin-top: -0.01rem;
+        border-bottom: 0;
+        margin-bottom: 0;
     }
     /* 進度圓點縮小 */
     .step-dot {
