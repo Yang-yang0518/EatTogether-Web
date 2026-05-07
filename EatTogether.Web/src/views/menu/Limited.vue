@@ -470,6 +470,9 @@
                             >
                             <span class="attr-chip pop" v-if="selectedDish.isPopular">🔥 熱銷</span>
                         </div>
+
+                        <!-- 前往評分 -->
+                        <button class="modal-rate-btn" @click="goToRating">✍ 前往評分</button>
                     </div>
                 </div>
             </div>
@@ -479,6 +482,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast.js'
@@ -488,6 +492,8 @@ import ShareMenu from '@/components/common/menu/ShareMenu.vue'
 import FavoriteButton from '@/components/common/menu/FavoriteButton.vue'
 const { show } = useToast()
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 // ── Intersection Observer 進場動畫 ───────────────────
 const vReveal = {
@@ -600,7 +606,7 @@ const loadFavorites = async () => {
             /* fall through */
         }
     }
-    favorites.value = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
+    favorites.value = []
 }
 
 const toggleFavorite = async (dishId) => {
@@ -630,18 +636,10 @@ watch(
     () => authStore.isLoggedIn,
     async (loggedIn) => {
         if (loggedIn) {
-            const local = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
-            if (local.length > 0) {
-                await apiFetch('/Favorites/Sync', {
-                    method: 'POST',
-                    body: JSON.stringify(local),
-                })
-                localStorage.removeItem('menu-favorites')
-            }
             await loadFavorites()
             await loadReminders()
         } else {
-            favorites.value = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
+            favorites.value = []
             reminders.value = []
         }
     }
@@ -831,6 +829,13 @@ const closeModal = () => {
     shareMenuOpen.value = false
     document.body.style.overflow = ''
 }
+
+const goToRating = () => {
+    const id = selectedDish.value?.id
+    if (!id) return
+    closeModal()
+    router.push(`/menu?dish=${id}&returnTo=/limited`)
+}
 const handleEsc = (e) => {
     if (e.key === 'Escape') closeModal()
 }
@@ -922,7 +927,7 @@ onMounted(async () => {
     await fetchLimited()
     await loadFavorites()
     await loadReminders()
-    _refreshTimer = setInterval(fetchLimited, 10_000)
+    _refreshTimer = setInterval(fetchLimited, 5_000)
     _clockTimer = setInterval(() => {
         currentTime.value = new Date()
     }, 1000)
@@ -930,8 +935,7 @@ onMounted(async () => {
     window.addEventListener('scroll', handleParallax, { passive: true })
 
     // 深層連結：偵測 ?dish=id，自動打開對應 Modal
-    const params = new URLSearchParams(window.location.search)
-    const dishParam = params.get('dish')
+    const dishParam = route.query.dish
     if (dishParam) {
         const dish = limitedDishes.value.find((d) => String(d.id) === dishParam)
         if (dish) openModal(dish)
@@ -2078,6 +2082,28 @@ onUnmounted(() => {
     background: rgba(126, 207, 126, 0.08);
     cursor: default;
     opacity: 0.85;
+}
+
+.modal-rate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border: 1px solid rgba(227, 199, 107, 0.25);
+    border-radius: 30px;
+    color: rgba(227, 199, 107, 0.7);
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    padding: 0.35rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    align-self: flex-start;
+}
+.modal-rate-btn:hover {
+    border-color: var(--eat-primary);
+    color: var(--eat-primary);
+    background: rgba(227, 199, 107, 0.07);
 }
 
 .modal-desc {
