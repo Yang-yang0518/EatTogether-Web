@@ -279,33 +279,13 @@
 
           <!-- 浮動按鈕 (position:fixed, JS 定位) -->
           <button class="modal-close" :style="{ top: btnPos.top, right: btnPos.closeRight }" @click="closeModal">✕</button>
-          <div class="share-wrap" ref="shareWrapRef" :style="{ top: btnPos.top, right: btnPos.shareRight }">
-            <button class="modal-share" @click.stop="shareMenuOpen = !shareMenuOpen" aria-label="分享">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                <polyline points="16 6 12 2 8 6"/>
-                <line x1="12" y1="2" x2="12" y2="15"/>
-              </svg>
-            </button>
-            <Transition name="share-menu">
-              <div v-if="shareMenuOpen" class="share-menu">
-                <button class="share-item" @click="openShareItem('line')">
-                  <span class="share-icon si-line">L</span>LINE
-                </button>
-                <button class="share-item" @click="openShareItem('facebook')">
-                  <span class="share-icon si-fb">f</span>Facebook
-                </button>
-                <button class="share-item" @click="openShareItem('x')">
-                  <span class="share-icon si-x">𝕏</span>X
-                </button>
-                <button class="share-item" @click="openShareItem('copy')">
-                  <span class="share-icon si-copy">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  </span>複製連結
-                </button>
-              </div>
-            </Transition>
-          </div>
+          <ShareMenu
+            v-model="shareMenuOpen"
+            :share-url="`${origin}/setmeal?meal=${selectedMeal?.id}`"
+            :share-title="selectedMeal?.setMealName ?? ''"
+            :style="{ position: 'fixed', top: btnPos.top, right: btnPos.shareRight, zIndex: 1100 }"
+            @select="openShareItem"
+          />
 
           <!-- 資訊區 -->
           <div class="modal-body" ref="modalBodyRef">
@@ -387,12 +367,15 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import ToastContainer from '@/components/common/ToastContainer.vue';
 import { useToast } from '@/composables/useToast.js';
 import apiFetch from '@/utils/apiFetch.js';
+import ShareMenu from '@/components/common/menu/ShareMenu.vue';
 const { show } = useToast();
 const router = useRouter();
+const route = useRoute();
+const origin = window.location.origin
 
 // ── Intersection Observer 進場 ──────────────────────
 const vReveal = {
@@ -699,7 +682,6 @@ const animateValue = (target, to, duration = 800) => {
 
 // ── Modal ──────────────────────────────────────────
 const shareMenuOpen = ref(false);
-const shareWrapRef = ref(null);
 
 const openShareItem = async (type) => {
   const meal = selectedMeal.value;
@@ -721,12 +703,6 @@ const openShareItem = async (type) => {
       break;
   }
   shareMenuOpen.value = false;
-};
-
-const handleShareClickOutside = (e) => {
-  if (shareMenuOpen.value && shareWrapRef.value && !shareWrapRef.value.contains(e.target)) {
-    shareMenuOpen.value = false;
-  }
 };
 
 const openModal = (meal) => {
@@ -776,13 +752,11 @@ onMounted(() => {
   window.addEventListener('keydown', handleEsc);
   window.addEventListener('resize', updateBtnPos);
   window.addEventListener('scroll', handleParallax, { passive: true });
-  document.addEventListener('click', handleShareClickOutside);
 });
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc);
   window.removeEventListener('resize', updateBtnPos);
   window.removeEventListener('scroll', handleParallax);
-  document.removeEventListener('click', handleShareClickOutside);
 });
 
 // ── API ────────────────────────────────────────────
@@ -804,8 +778,6 @@ const fetchSetMeals = async () => {
     const res = await apiFetch('/SetMeals/active');
     if (!res.ok) throw new Error(`抓取失敗 (${res.status})`);
     const data = await res.json();
-    console.log('第一筆套餐欄位：', Object.keys(data[0]));
-    console.log('isRecommended 範例：', data[0]?.isRecommended, data[0]?.isPopular);
     setMeals.value = [...data].sort((a, b) => {
       const scoreA = (a.isRecommended ? 2 : 0) + (a.isPopular ? 1 : 0);
       const scoreB = (b.isRecommended ? 2 : 0) + (b.isPopular ? 1 : 0);
@@ -830,8 +802,7 @@ onMounted(async () => {
   _clockTimer = setInterval(() => { currentTime.value = new Date(); }, 1000);
 
   // 深層連結：偵測 ?meal=id，自動打開對應 Modal
-  const params = new URLSearchParams(window.location.search);
-  const mealParam = params.get('meal');
+  const mealParam = route.query.meal;
   if (mealParam) {
     const meal = setMeals.value.find(m => String(m.id) === mealParam);
     if (meal) openModal(meal);
@@ -1530,41 +1501,6 @@ onUnmounted(() => {
 }
 .modal-close:hover { background: rgba(0,0,0,0.9); }
 .share-wrap { position: fixed; z-index: 1100; }
-.modal-share {
-  width: 32px; height: 32px; border-radius: 50%;
-  background: rgba(0,0,0,0.5); border: none; color: rgba(255,255,255,0.8);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: background 0.2s, color 0.2s;
-}
-.modal-share:hover { background: rgba(0,0,0,0.8); color: var(--eat-primary); }
-.share-menu {
-  position: absolute; top: calc(100% + 0.45rem); right: 0;
-  background: rgba(18, 8, 4, 0.96); backdrop-filter: blur(16px);
-  border: 1px solid rgba(227, 199, 107, 0.22); border-radius: 12px;
-  padding: 0.35rem; display: flex; flex-direction: column; gap: 0.15rem;
-  min-width: 148px; box-shadow: 0 12px 40px rgba(0,0,0,0.55);
-}
-.share-item {
-  display: flex; align-items: center; gap: 0.6rem;
-  padding: 0.48rem 0.7rem; border: none; background: none; border-radius: 8px;
-  color: rgba(249, 221, 211, 0.82); font-family: var(--font-label);
-  font-size: 0.78rem; letter-spacing: 0.04em; cursor: pointer;
-  transition: background 0.15s; white-space: nowrap; width: 100%; text-align: left;
-}
-.share-item:hover { background: rgba(255,255,255,0.06); }
-.share-icon {
-  width: 22px; height: 22px; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.72rem; font-weight: 700; flex-shrink: 0; line-height: 1;
-}
-.si-line { background: #06C755; color: white; border-radius: 6px; font-size: 0.62rem; }
-.si-fb   { background: #1877F2; color: white; border-radius: 50%; font-size: 0.88rem; }
-.si-x    { background: #0f0f0f; color: white; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); font-size: 0.75rem; }
-.si-copy { background: rgba(227,199,107,0.12); color: var(--eat-primary); border: 1px solid rgba(227,199,107,0.3); border-radius: 6px; }
-.share-menu-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
-.share-menu-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
-.share-menu-enter-from   { opacity: 0; transform: scale(0.88) translateY(-8px); transform-origin: top right; }
-.share-menu-leave-to     { opacity: 0; transform: scale(0.92) translateY(-4px); transform-origin: top right; }
 .modal-badge-group {
   position: absolute; bottom: 1rem; left: 1.25rem;
   display: flex; gap: 0.4rem; z-index: 2;

@@ -1,6 +1,7 @@
 using EatTogether.Models.DTOs;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace EatTogether.Models.Infra
 {
@@ -9,7 +10,8 @@ namespace EatTogether.Models.Infra
         private static readonly JsonSerializerOptions _opts = new()
         {
             PropertyNameCaseInsensitive = true,
-            WriteIndented = false
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         };
 
         /// <summary>
