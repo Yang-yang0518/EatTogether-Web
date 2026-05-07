@@ -196,9 +196,6 @@
                             <h3 class="dish-name">{{ dish.dishName }}</h3>
                             <div class="dish-price-wrap">
                                 <span class="dish-price">NT$ {{ dish.price.toLocaleString() }}</span>
-                                <span class="dish-card-rating" v-if="dish.ratingCount > 0">
-                                    ★ {{ dish.averageScore.toFixed(1) }}（{{ dish.ratingCount }}）
-                                </span>
                             </div>
                         </div>
                         <p class="dish-desc">
@@ -209,6 +206,7 @@
                         </p>
                         <div class="dish-footer">
                             <div class="dish-tags">
+                                <span class="tag rating-tag" v-if="dish.ratingCount > 0">★ {{ dish.averageScore.toFixed(1) }}</span>
                                 <span class="tag veg-tag" v-if="dish.isVegetarian">🥬 素食</span>
                                 <span class="tag spicy-tag" v-if="dish.spicyLevel > 0">
                                     {{ '🌶️'.repeat(dish.spicyLevel) }}
@@ -234,7 +232,7 @@
         <!-- ── Return to SetMeal button ── -->
         <Transition name="return-btn">
             <button v-if="returnTo" class="return-setmeal-btn" @click="router.push(returnTo)">
-                ← 返回套餐
+                {{ returnLabel }}
             </button>
         </Transition>
 
@@ -416,6 +414,12 @@ const openAuthModal = () =>
 const route = useRoute()
 const router = useRouter()
 const returnTo = computed(() => route.query.returnTo || null)
+const returnLabel = computed(() => {
+    if (!returnTo.value) return ''
+    if (returnTo.value.startsWith('/limited')) return '← 返回限定餐點'
+    if (returnTo.value.startsWith('/setmeal')) return '← 返回套餐'
+    return '← 返回'
+})
 
 // ── Share ─────────────────────────────────────────────
 const shareMenuOpen = ref(false)
@@ -722,8 +726,6 @@ const openModal = async (dish) => {
     selectedDish.value = dish
     isModalOpen.value = true
     document.body.style.overflow = 'hidden'
-    selectedStar.value = ratedScore(dish.id)
-    reviewsShowAll.value = false
 
     try {
         const res = await apiFetch(`/Dishes/${dish.id}/Rating`)
@@ -731,8 +733,7 @@ const openModal = async (dish) => {
             const data = await res.json()
             dishRatingMap[dish.id] = data
         }
-    } catch (_e) { /* 忽略評分載入錯誤 */ }
-
+    } catch { /* 忽略評分載入錯誤 */ }
 }
 
 const closeModal = () => {
@@ -752,20 +753,6 @@ onUnmounted(() => window.removeEventListener('keydown', handleEsc))
 // ── Utils ────────────────────────────────────────────
 const spicyLabel = (level) => {
     return ['', '微辣', '中辣', '大辣', '極辣'][level] ?? '辣'
-}
-
-const getAvgStarType = (avg, starPos) => {
-    if (avg >= starPos) return 'full'
-    if (avg >= starPos - 0.5) return 'half'
-    return 'empty'
-}
-
-const getBarWidth = (avg, star) => {
-    const levels = [5, 4, 3, 2, 1]
-    const raw = levels.map(s => Math.max(0, 100 - Math.abs(s - avg) * 100))
-    const max = Math.max(...raw)
-    if (max === 0) return 0
-    return Math.round(raw[levels.indexOf(star)] / max * 100)
 }
 
 const formatImageUrl = (url) => {
@@ -841,7 +828,7 @@ onMounted(async () => {
     window.addEventListener('resize', updateBtnPos)
 
     // 深層連結：?dish=id 自動開 Modal
-    const dishParam = new URLSearchParams(window.location.search).get('dish')
+    const dishParam = route.query.dish
     if (dishParam) {
         const dish = dishes.value.find(d => String(d.id) === dishParam)
         if (dish) openModal(dish)
@@ -1413,13 +1400,15 @@ onUnmounted(() => {
     margin-left: 0.5rem;
     flex-shrink: 0;
 }
-.dish-card-rating {
-    font-family: var(--font-label);
-    font-size: 0.62rem;
+.rating-tag {
+    border: 1px solid rgba(227, 199, 107, 0.3);
+    background: rgba(227, 199, 107, 0.07);
     color: var(--eat-primary);
+    border-radius: 20px;
+    padding: 0.15rem 0.55rem;
+    font-family: var(--font-label);
+    font-size: 0.72rem;
     letter-spacing: 0.03em;
-    opacity: 0.72;
-    white-space: nowrap;
 }
 .dish-price {
     font-family: var(--font-label);
