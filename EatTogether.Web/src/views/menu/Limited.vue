@@ -981,7 +981,7 @@ onUnmounted(() => {
 /* ── Header ──────────────────────────────────────── */
 .limited-header {
     position: relative;
-    padding: 8rem 0 1.5rem;
+    padding: 6rem 0 2.5rem;
     text-align: center;
     overflow: hidden;
 }
@@ -1006,6 +1006,7 @@ onUnmounted(() => {
 .header-content {
     position: relative;
     z-index: 2;
+    top: -1.5rem;
 }
 
 .limited-eyebrow {

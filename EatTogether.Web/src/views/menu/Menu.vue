@@ -851,10 +851,19 @@ onUnmounted(() => {
 }
 
 .menu-header {
-    padding: 8rem 0 2rem;
+    padding: 6rem 0 2.5rem;
     text-align: center;
     position: relative;
     overflow: hidden;
+}
+.menu-header .container {
+    display: flex;
+    flex-direction: column;
+    min-height: 12rem;
+    padding-bottom: 0;
+}
+.menu-header .eat-h1 {
+    margin-bottom: 0;
 }
 .menu-header-bg {
     position: absolute;
@@ -900,6 +909,7 @@ onUnmounted(() => {
     gap: 0.5rem;
     flex-wrap: wrap;
     padding: 0 1rem;
+    margin-top: auto;
 }
 
 .tab-btn {
