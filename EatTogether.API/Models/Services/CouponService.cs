@@ -83,16 +83,20 @@ namespace EatTogether.Models.Services
             await _couponRepo.IncrementReceivedCountAsync(couponId);
 
             // 建立領取通知
-			await _notifyService.SendToMemberAsync(
-	            memberId: memberId,
-	            type: "COUPON_RECEIVED",
-	            referenceType: "Coupon",
-	            referenceId: couponId,
-	            title: $"優惠券已領取｜{coupon.Name}",
-	            message: coupon.EndDate.HasValue
-					            ? $"有效期限至 {coupon.EndDate.Value:MM/dd}，結帳時即可使用"
-					            : "無使用期限，結帳時即可使用"
-            );
+            try {
+				await _notifyService.SendToMemberAsync(
+				memberId: memberId,
+				type: "COUPON_RECEIVED",
+				referenceType: "Coupon",
+				referenceId: couponId,
+				title: $"優惠券已領取｜{coupon.Name}",
+				message: coupon.EndDate.HasValue
+								? $"有效期限至 {coupon.EndDate.Value:MM/dd}，結帳時即可使用"
+								: "無使用期限，結帳時即可使用"
+			    );
+            }
+            catch { /* 通知失敗不影響流程 */ }
+			
 
 			return Result.Success();
         }
