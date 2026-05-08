@@ -24,9 +24,20 @@ public class WalkInQueueService
         };
     }
 
+    // 營業時間（候位開放：開店前 30 分鐘 ~ 打烊）
+    private static readonly TimeOnly QueueOpenTime  = new(10, 30);
+    private static readonly TimeOnly QueueCloseTime = new(21, 0);
+
     // ─── 登記候位 ────────────────────────────────────────────
     public async Task<Result<WalkInStatusDto>> RegisterAsync(WalkInCreateDto dto, int? memberId)
     {
+        // 營業時間判斷
+        var now = TimeOnly.FromDateTime(DateTime.Now);
+        if (now < QueueOpenTime)
+            return Result<WalkInStatusDto>.Fail($"候位開放時間為 {QueueOpenTime:HH:mm}，請稍後再試");
+        if (now >= QueueCloseTime)
+            return Result<WalkInStatusDto>.Fail("今日候位已結束，歡迎明日再來");
+
         // 基本驗證
         if (string.IsNullOrWhiteSpace(dto.Name) || dto.Name.Length < 2 || dto.Name.Length > 50)
             return Result<WalkInStatusDto>.Fail("請輸入正確姓名（2～50 字）");
