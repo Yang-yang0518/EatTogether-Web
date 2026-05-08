@@ -1821,14 +1821,16 @@ namespace EatTogether.Models.Services
 
                 if (!match) continue;
 
-                // 父項目（無 ParentDetailId）、未取消
+                // 父項目（無 ParentDetailId）：
+                // 已取消訂單顯示所有品項（含取消明細），其餘只顯示未取消品項
+                var isCancelledOrder = p.DoneOrCancel == 2;
                 var parentDetails = p.PreOrderDetails
-                    .Where(d => d.ParentDetailId == null && d.DoneOrCancel != 2)
+                    .Where(d => d.ParentDetailId == null && (isCancelledOrder || d.DoneOrCancel != 2))
                     .ToList();
 
                 // 取子項目（依 ParentDetailId 分組）
                 var childrenByParent = p.PreOrderDetails
-                    .Where(d => d.ParentDetailId != null && d.DoneOrCancel != 2)
+                    .Where(d => d.ParentDetailId != null && (isCancelledOrder || d.DoneOrCancel != 2))
                     .GroupBy(d => d.ParentDetailId)
                     .ToDictionary(g => g.Key!.Value, g => g.Select(d => d.ProductName).ToList());
 
@@ -1870,7 +1872,7 @@ namespace EatTogether.Models.Services
                     CustomerName     = note.CustomerName  ?? "",
                     CustomerPhone    = note.CustomerPhone ?? "",
                     PickupTime       = note.PickupTime    ?? "",
-                    OrderStatus      = p.DoneOrCancel,
+                    OrderStatus      = PreOrderRepository.ComputeTakeoutStatus(p.DoneOrCancel, p.PreOrderDetails),
                     Subtotal         = p.OriginalAmount,
                     DiscountAmount   = p.DiscountAmount,
                     TotalAmount      = p.TotalAmount,

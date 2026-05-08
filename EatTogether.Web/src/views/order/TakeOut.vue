@@ -1457,6 +1457,22 @@
             </div>
         </div>
 
+        <!-- ══ 餐點已完成 Modal ══ -->
+        <Teleport to="body">
+            <div v-if="showReadyModal" class="ready-modal-overlay">
+                <div class="ready-modal">
+                    <div class="ready-modal-icon">🍽</div>
+                    <h2 class="font-headline ready-modal-title">餐點已完成！</h2>
+                    <p class="font-body ready-modal-body">
+                        您的餐點已備妥，請至櫃台取餐並完成付款。
+                    </p>
+                    <button class="ready-modal-btn font-label" @click="onReadyModalConfirm">
+                        確認
+                    </button>
+                </div>
+            </div>
+        </Teleport>
+
         <!-- ══ Detail Modal ══ -->
         <DishDetailModal
             :dish="activeDetail"
@@ -1642,7 +1658,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useOrderStore } from '@/stores/order'
 import { useAuthStore } from '@/stores/auth'
 import { RouterLink, useRouter } from 'vue-router'
@@ -1734,6 +1750,7 @@ const confirmedCouponDiscount = ref(0)
 const confirmedCouponMsg = ref('')
 const confirmedSubtotal = ref(0) // 餐點原價合計（未含折扣）
 const orderProgress = ref(1) // 動態進度條：1=接收 2=製作中 3=完成
+const showReadyModal = ref(false) // 餐點已完成 Modal
 
 // ── 成功頁 localStorage 持久化（同日期重整後還原）──────
 const SUCCESS_KEY = 'takeout_success_v1'
@@ -2589,6 +2606,7 @@ async function submitOrder() {
             peopleNum: 1,
             isAddOrder: false,
             payMethod: 'Cash',
+            // 後台顯示用純文字格式（保留原格式）
             note: [
                 `取餐時間：${pickupTime.value}`,
                 `取餐人：${customerName.value.trim()}`,
@@ -2598,8 +2616,13 @@ async function submitOrder() {
             ]
                 .filter(Boolean)
                 .join('\n'),
+            // 外帶獨立欄位（存入 JSON note customerName/Phone/PickupTime，查詢頁直接讀取，不靠 regex）
+            customerName:  customerName.value.trim(),
+            customerPhone: customerPhone.value.trim(),
+            pickupTime:    pickupTime.value,
             memberId: currentMemberId.value,
             couponId: couponId.value,
+            eventId: isLoggedIn.value && bestAutoEvent.value ? bestAutoEvent.value.id : null,
             discountAmount: (couponOk.value ? couponDiscount.value : 0) + autoEventDiscount.value,
             items: itemsPayload,
         }
@@ -2655,6 +2678,7 @@ async function submitOrder() {
         orderProgress.value = 1
         step.value = 4
         saveSuccessToStorage() // 存入 localStorage，重整後可還原
+        startStatusPolling()   // 開始輪詢：訂單取消或完成時自動返回
         window.scrollTo({ top: 0, behavior: 'smooth' })
 
         // 動態進度：1.5 秒後推進到「餐點製作中」
@@ -2671,6 +2695,7 @@ async function submitOrder() {
 }
 
 function onSuccessClose() {
+    stopStatusPolling()       // 停止輪詢
     clearSuccessFromStorage() // 返回菜單時清除持久化成功頁
     step.value = 1
     pickupTime.value = ''
@@ -2691,6 +2716,54 @@ function onSuccessClose() {
     confirmedNeedUtensils.value = false
     orderProgress.value = 1
     window.scrollTo({ top: 0 })
+}
+
+// ── 成功頁輪詢：訂單取消或已完成時自動返回菜單 ────────────────────
+let _statusPollTimer = null
+
+function startStatusPolling() {
+    stopStatusPolling()
+    _statusPollTimer = setInterval(async () => {
+        if (step.value !== 4 || !orderNumber.value) {
+            stopStatusPolling()
+            return
+        }
+        try {
+            const res = await apiFetch(`/Orders/TakeoutStatus?orderNumber=${encodeURIComponent(orderNumber.value)}`)
+            if (!res.ok) return
+            const data = await res.json()
+            if (data.status === 1) {
+                // 餐點已完成（待取餐）→ 進度條跑到 3，彈出通知 Modal，停止輪詢等用戶確認
+                stopStatusPolling()
+                orderProgress.value = 3
+                saveSuccessToStorage()
+                showReadyModal.value = true
+            } else if (data.status === 2) {
+                // 訂單已取消 → 直接返回菜單
+                stopStatusPolling()
+                onSuccessClose()
+            } else if (data.status === 3) {
+                // 已結帳完成 → 直接返回菜單
+                stopStatusPolling()
+                onSuccessClose()
+            }
+        } catch {
+            // 網路問題靜默忽略，等下次輪詢
+        }
+    }, 30000) // 每 30 秒查詢一次
+}
+
+function onReadyModalConfirm() {
+    // 用戶確認「餐點已完成」後：關閉 Modal、留在成功頁（progress=3），重啟輪詢等待付款完成
+    showReadyModal.value = false
+    startStatusPolling() // 繼續輪詢，偵測 status=3（已結帳）後才真正返回菜單
+}
+
+function stopStatusPolling() {
+    if (_statusPollTimer !== null) {
+        clearInterval(_statusPollTimer)
+        _statusPollTimer = null
+    }
 }
 
 function clearAll() {
@@ -2728,6 +2801,10 @@ watch(isLoggedIn, (loggedIn) => {
         myCoupons.value = []
         resetCoupon()
     }
+})
+
+onUnmounted(() => {
+    stopStatusPolling()
 })
 
 onMounted(async () => {
@@ -2797,6 +2874,7 @@ onMounted(async () => {
         confirmedCouponDiscount.value = savedSuccess.confirmedCouponDiscount ?? 0
         confirmedSubtotal.value = savedSuccess.confirmedSubtotal ?? 0
         step.value = 4
+        startStatusPolling()   // 重整後還原成功頁時也開始輪詢
         window.scrollTo({ top: 0 })
     }
 })
@@ -5181,5 +5259,69 @@ onMounted(async () => {
     .step-card-title {
         font-size: 1.4rem;
     }
+}
+
+/* ══ 餐點已完成 Modal ══ */
+.ready-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 4, 2, 0.82);
+    backdrop-filter: blur(4px);
+    z-index: 9800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.ready-modal {
+    background: #271813;
+    border: 1px solid rgba(227, 199, 107, 0.35);
+    border-radius: 1rem;
+    padding: 2.5rem 2rem;
+    max-width: 400px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+    animation: rm-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes rm-pop {
+    from { opacity: 0; transform: scale(0.88); }
+    to   { opacity: 1; transform: scale(1); }
+}
+.ready-modal-icon {
+    font-size: 2.8rem;
+}
+.ready-modal-title {
+    font-size: 1.6rem;
+    color: #e3c76b;
+    margin: 0;
+    letter-spacing: 0.05em;
+}
+.ready-modal-body {
+    font-size: 0.95rem;
+    color: rgba(208, 197, 181, 0.75);
+    text-align: center;
+    line-height: 1.6;
+    margin: 0;
+}
+.ready-modal-btn {
+    margin-top: 0.5rem;
+    width: 100%;
+    padding: 0.85rem;
+    background: linear-gradient(135deg, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    border: none;
+    border-radius: 0.4rem;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+.ready-modal-btn:hover {
+    filter: brightness(1.1);
 }
 </style>

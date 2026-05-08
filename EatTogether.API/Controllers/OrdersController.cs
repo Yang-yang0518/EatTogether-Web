@@ -117,10 +117,9 @@ namespace EatTogether.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> ValidateCoupon([FromBody] ValidateCouponRequest req)
         {
-            // TODO: 之後改為從 JWT cookie 取得登入會員 ID
-            // var memberIdStr = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
-            // int? memberId = int.TryParse(memberIdStr, out var mid) ? mid : null;
-            int? memberId = 61; // 暫時固定為冷明輝（MemberId=61）
+            // 從 JWT 取得登入會員 ID；未登入則為 null（CouponService 會回傳「請先登入」）
+            var memberIdStr = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int? memberId = int.TryParse(memberIdStr, out var mid) ? mid : null;
 
             var result = await _couponService.ValidateCouponAsync(req.Code, memberId, req.OrderAmount);
             return Ok(result);
@@ -140,6 +139,21 @@ namespace EatTogether.API.Controllers
 
             var result = await _service.QueryTodayPendingTakeoutAsync(type, q.Trim());
             return Ok(result);
+        }
+
+        // 前台成功頁輪詢：依訂單編號查詢當日外帶訂單狀態
+        [HttpGet("TakeoutStatus")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetTakeoutStatus([FromQuery] string orderNumber)
+        {
+            if (string.IsNullOrWhiteSpace(orderNumber))
+                return BadRequest("請提供訂單編號");
+
+            var status = await _preOrderRepo.GetTakeoutStatusByOrderNumberAsync(orderNumber.Trim());
+            if (status == null)
+                return NotFound();
+
+            return Ok(new { orderNumber, status });
         }
 
         // 會員歷史訂單

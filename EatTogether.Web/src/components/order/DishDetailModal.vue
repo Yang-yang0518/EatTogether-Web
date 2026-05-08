@@ -136,7 +136,7 @@ function onConfirm() {
     bottom: 0;
     background: rgba(24, 11, 6, 0.87);
     backdrop-filter: blur(6px);
-    z-index: 1050;
+    z-index: 9000; /* 高於 notify-toast-stack(8500)，低於 cart-overlay(9500) */
     align-items: center;
     justify-content: center;
 }

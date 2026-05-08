@@ -628,15 +628,39 @@
                                 <div
                                     v-for="item in order.items?.filter((i) => i)"
                                     :key="item.productName"
-                                    class="font-body"
-                                    style="color: #f9ddd3; font-size: 0.9rem"
+                                    class="history-item-wrap"
                                 >
-                                    {{ item.qty }} x {{ item.productName }}
-                                    <span
-                                        v-if="item.note"
-                                        style="color: rgba(208, 197, 181, 0.5); font-size: 0.8rem"
-                                        >（{{ item.note }}）</span
+                                    <div
+                                        class="font-body"
+                                        style="color: #f9ddd3; font-size: 0.9rem"
                                     >
+                                        <span
+                                            v-if="item.isSetMeal"
+                                            class="history-setmeal-badge font-label"
+                                            >套餐</span
+                                        >
+                                        {{ item.qty }} x {{ item.productName }}
+                                        <span
+                                            v-if="item.note"
+                                            style="
+                                                color: rgba(208, 197, 181, 0.5);
+                                                font-size: 0.8rem;
+                                            "
+                                            >（{{ item.note }}）</span
+                                        >
+                                    </div>
+                                    <!-- 套餐子項目 -->
+                                    <div
+                                        v-if="item.isSetMeal && item.subItems?.length"
+                                        class="history-subitems"
+                                    >
+                                        <span
+                                            v-for="sub in item.subItems"
+                                            :key="sub.productName"
+                                            class="font-body history-subitem"
+                                            >{{ sub.qty }} x {{ sub.productName }}</span
+                                        >
+                                    </div>
                                 </div>
                                 <!-- 整單備註 -->
                                 <div
@@ -1743,9 +1767,10 @@ const autoEventDiscount = computed(() =>
     isLoggedIn.value && bestAutoEvent.value ? (bestAutoEvent.value.calculatedDiscount ?? 0) : 0
 )
 
-async function fetchActiveEvents() {
+async function fetchActiveEvents(amount = null) {
+    const effectiveAmount = amount ?? total.value
     try {
-        const res = await apiFetch(`/Orders/ActiveEvents?amount=${total.value}`)
+        const res = await apiFetch(`/Orders/ActiveEvents?amount=${effectiveAmount}`)
         if (!res.ok) return
         const data = await res.json()
         autoEvents.value = data.autoEvents ?? []
@@ -1865,7 +1890,7 @@ async function fetchActiveEvents() {
 
 watch(total, (val) => {
     if (val > 0) {
-        fetchActiveEvents()
+        fetchActiveEvents(val - couponDiscount.value)
     } else {
         autoEvents.value = []
         notifyEvents.value = []
@@ -1878,6 +1903,14 @@ watch(total, (val) => {
         giftCartItem.value = null
         _lastBestEventId = null
         clearTimeout(_appliedEventToastTimer)
+    }
+})
+
+// 套用 / 清除優惠券時，以扣券後的有效金額重新判斷活動門檻
+// 確保優惠券折扣使金額低於門檻時，差額 toast 能正確顯示
+watch(couponDiscount, (discount) => {
+    if (total.value > 0) {
+        fetchActiveEvents(total.value - discount)
     }
 })
 
@@ -2074,7 +2107,8 @@ async function submitOrder() {
             note: store.specialRequest || null,
             memberId: currentMemberId.value,
             couponId: couponId.value,
-            discountAmount: couponOk.value ? couponDiscount.value : 0,
+            eventId: isLoggedIn.value && bestAutoEvent.value ? bestAutoEvent.value.id : null,
+            discountAmount: (couponOk.value ? couponDiscount.value : 0) + autoEventDiscount.value,
             items: (() => {
                 const result = []
                 for (const i of cartItemsWithDetails.value) {
@@ -2181,15 +2215,50 @@ function showPaxError() {
     }, 2800)
 }
 
-function reorder(order) {
-    order.items.forEach((item) => {
+async function reorder(order) {
+    for (const item of order.items ?? []) {
         const matched = products.value.find((p) => p.productName === item.productName)
-        if (matched) {
+        if (!matched) continue
+
+        if (item.isSetMeal && matched.isSetMeal && matched.setMealId) {
+            // 套餐：重新抓套餐定義，重建 fixedItems 與 selectedOptions
+            let fixedItems = []
+            let selectedOptions = []
+            try {
+                const res = await apiFetch(`/SetMeals/${matched.setMealId}`)
+                if (res.ok) {
+                    const meal = await res.json()
+                    fixedItems = (meal.items ?? []).filter((i) => !i.isOptional)
+                    const optionalItems = (meal.items ?? []).filter((i) => i.isOptional)
+                    for (const sub of item.subItems ?? []) {
+                        const opt = optionalItems.find((o) => o.dishName === sub.productName)
+                        if (opt) {
+                            selectedOptions.push({
+                                dishId: opt.dishId,
+                                dishName: opt.dishName,
+                                qty: sub.qty,
+                                groupNo: opt.optionGroupNo,
+                            })
+                        }
+                    }
+                }
+            } catch {
+                /* fallback：留空，使用者可手動編輯 */
+            }
+            for (let i = 0; i < item.qty; i++) {
+                store.addSetMeal(matched.productId, matched.unitPrice, item.note || '', {
+                    id: matched.setMealId,
+                    name: matched.productName,
+                    fixedItems,
+                    selectedOptions,
+                })
+            }
+        } else {
             for (let i = 0; i < item.qty; i++) {
                 store.addItem(matched.productId, item.note || '')
             }
         }
-    })
+    }
     activeSidebarCat.value = '全部'
     showToast('已加入購物車')
 }
@@ -2970,6 +3039,36 @@ html:has(.gate-wrap) footer {
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
+}
+.history-item-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.history-setmeal-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.2rem;
+    background: rgba(93, 69, 20, 0.4);
+    border: 1px solid rgba(228, 194, 133, 0.35);
+    color: #e4c285;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+.history-subitems {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding-left: 1rem;
+    border-left: 2px solid rgba(77, 70, 58, 0.4);
+    margin-left: 0.25rem;
+}
+.history-subitem {
+    font-size: 0.8rem;
+    color: rgba(208, 197, 181, 0.6);
 }
 .history-reorder-btn {
     align-self: flex-end;

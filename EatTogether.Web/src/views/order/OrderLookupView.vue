@@ -19,19 +19,12 @@
                             @keyup.enter="doLookup"
                         />
                     </div>
-                    <div class="ol-card-divider"></div>
-                    <p
-                        class="font-label mb-0"
-                        style="
-                            font-size: 0.8rem;
-                            color: rgba(208, 197, 181, 0.5);
-                            margin-left: auto;
-                        "
-                    >
-                        以下擇一必填
-                    </p>
+                    <div class="ol-card-divider" style="margin: 0.5rem 0"></div>
                     <div class="ol-field">
-                        <label class="ol-label font-label"> 訂單編號 </label>
+                        <label class="ol-label font-label">
+                            訂單編號
+                            <span class="ol-required">（查單筆）</span>
+                        </label>
                         <input
                             v-model="lkOrderNum"
                             class="ol-input font-label"
@@ -42,7 +35,10 @@
                     </div>
 
                     <div class="ol-field">
-                        <label class="ol-label font-label"> 電話號碼 </label>
+                        <label class="ol-label font-label">
+                            電話號碼
+                            <span class="ol-required">（查多筆）</span>
+                        </label>
                         <input
                             v-model="lkPhone"
                             class="ol-input font-label"
@@ -55,6 +51,7 @@
                     <p v-if="error" class="ol-error font-label">{{ error }}</p>
 
                     <div class="ol-btn-group">
+                        <button class="ol-reset-btn font-label" @click="resetSearch">✖ 重置</button>
                         <button
                             class="ol-search-btn font-label"
                             :disabled="!canSearch || searching"
@@ -75,7 +72,6 @@
                             <span v-if="searching" class="ol-spinner"></span>
                             {{ searching ? '查詢中…' : '搜尋' }}
                         </button>
-                        <button class="ol-reset-btn font-label" @click="resetSearch">✖ 重置</button>
                     </div>
 
                     <!-- 查詢結果訂單編號列表 -->
@@ -135,9 +131,9 @@
                     <!-- 查無結果 -->
                     <div v-else-if="searched && results.length === 0" class="ol-empty">
                         <div class="ol-empty-icon">📭</div>
-                        <p class="font-body ol-empty-text">查無符合的外帶訂單</p>
+                        <p class="font-body ol-empty-text">查無符合的訂單</p>
                         <p class="font-label ol-empty-hint">
-                            請確認資料是否填寫正確，或查詢僅限當日訂單
+                            請確認資料是否填寫正確，查詢範圍僅限當日外帶訂單
                         </p>
                     </div>
 
@@ -153,8 +149,9 @@
                             </div>
                         </div>
 
-                        <!-- 進度條（全寬）：依 orderStatus 決定狀態 -->
-                        <div class="ol-progress">
+                        <!-- 進度條 -->
+                        <!-- status=0：三步驟（接收✓ → 製作中▶ → 完成暗） -->
+                        <div v-if="selectedOrder.orderStatus === 0" class="ol-progress">
                             <div class="ol-prog-step ol-prog-done">
                                 <div class="ol-prog-dot">
                                     <svg
@@ -171,69 +168,63 @@
                                 </div>
                                 <span class="font-label ol-prog-lbl">訂單已接收</span>
                             </div>
-                            <div :class="['ol-prog-line', 'ol-prog-line-lit']"></div>
-                            <div
-                                :class="[
-                                    'ol-prog-step',
-                                    selectedOrder.orderStatus === 1
-                                        ? 'ol-prog-done'
-                                        : 'ol-prog-active',
-                                ]"
-                            >
-                                <div class="ol-prog-dot">
-                                    <svg
-                                        v-if="selectedOrder.orderStatus === 1"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="14"
-                                        height="14"
-                                        fill="currentColor"
-                                        viewBox="0 0 16 16"
-                                    >
-                                        <path
-                                            d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
-                                        />
-                                    </svg>
-                                    <span v-else>2</span>
-                                </div>
+                            <div class="ol-prog-line ol-prog-line-lit"></div>
+                            <div class="ol-prog-step ol-prog-active">
+                                <div class="ol-prog-dot"><span>2</span></div>
                                 <span class="font-label ol-prog-lbl">餐點製作中</span>
                             </div>
-                            <div
-                                :class="[
-                                    'ol-prog-line',
-                                    selectedOrder.orderStatus === 1 ? 'ol-prog-line-lit' : '',
-                                ]"
-                            ></div>
-                            <div
-                                :class="[
-                                    'ol-prog-step',
-                                    selectedOrder.orderStatus === 1 ? 'ol-prog-done' : '',
-                                ]"
-                            >
-                                <div class="ol-prog-dot">
-                                    <svg
-                                        v-if="selectedOrder.orderStatus === 1"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="14"
-                                        height="14"
-                                        fill="currentColor"
-                                        viewBox="0 0 16 16"
-                                    >
-                                        <path
-                                            d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
-                                        />
-                                    </svg>
-                                    <span v-else>3</span>
-                                </div>
+                            <div class="ol-prog-line"></div>
+                            <div class="ol-prog-step">
+                                <div class="ol-prog-dot"><span>3</span></div>
                                 <span class="font-label ol-prog-lbl">餐點已完成</span>
                             </div>
                         </div>
 
-                        <!-- 已結帳提示 -->
+                        <!-- status=1：餐點已完成（待取餐）-->
                         <div
-                            v-if="selectedOrder.orderStatus === 1"
-                            class="ol-paid-badge font-label"
+                            v-else-if="selectedOrder.orderStatus === 1"
+                            class="ol-progress-done-single"
                         >
-                            ✅ 此訂單已結帳完成
+                            <div class="ol-done-single-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                                </svg>
+                                <span class="font-label">餐點已完成</span>
+                            </div>
+                        </div>
+
+                        <!-- status=3：已結帳完成 -->
+                        <div
+                            v-else-if="selectedOrder.orderStatus === 3"
+                            class="ol-progress-done-single"
+                        >
+                            <div class="ol-done-single-badge ol-done-paid-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                                </svg>
+                                <span class="font-label">已結帳完成</span>
+                            </div>
+                        </div>
+
+                        <!-- status=2：三步驟全暗（已取消） -->
+                        <div
+                            v-else-if="selectedOrder.orderStatus === 2"
+                            class="ol-progress ol-progress-cancelled"
+                        >
+                            <div class="ol-prog-step">
+                                <div class="ol-prog-dot"><span>1</span></div>
+                                <span class="font-label ol-prog-lbl">訂單已接收</span>
+                            </div>
+                            <div class="ol-prog-line"></div>
+                            <div class="ol-prog-step">
+                                <div class="ol-prog-dot"><span>2</span></div>
+                                <span class="font-label ol-prog-lbl">餐點製作中</span>
+                            </div>
+                            <div class="ol-prog-line"></div>
+                            <div class="ol-prog-step">
+                                <div class="ol-prog-dot"><span>3</span></div>
+                                <span class="font-label ol-prog-lbl">餐點已完成</span>
+                            </div>
                         </div>
 
                         <!-- 雙欄主體（與訂單已送出頁面相同排版）-->
@@ -374,21 +365,21 @@
                                 </div>
                                 <!-- 備註 -->
                                 <div
-                                    v-if="selectedOrder.note"
+                                    v-if="displayNote(selectedOrder.note)"
                                     class="ol-meta-row"
                                     style="margin-top: 0.45rem"
                                 >
                                     <span class="font-label ol-meta-label-dim">備註</span>
                                     <span class="font-label ol-meta-val">{{
-                                        selectedOrder.note
+                                        displayNote(selectedOrder.note)
                                     }}</span>
                                 </div>
                             </div>
 
                             <!-- 右欄：提醒 + 取餐資訊 + 聯絡 -->
                             <div class="ol-detail-right">
-                                <!-- 防呆提醒（與成功頁相同樣式） -->
-                                <div class="ol-reminders">
+                                <!-- 防呆提醒：進行中 & 已完成訂單 -->
+                                <div v-if="selectedOrder.orderStatus !== 2" class="ol-reminders">
                                     <div class="ol-reminder-item">
                                         <span class="ol-reminder-icon">⏱</span>
                                         <span class="font-label">餐點現點現做，請耐心等候</span>
@@ -445,8 +436,20 @@
                                     </div>
                                 </div>
 
-                                <!-- 餐廳聯絡資訊 -->
-                                <section class="ol-contact-section">
+                                <!-- 已取消：大型取消卡片 -->
+                                <div v-if="selectedOrder.orderStatus === 2" class="ol-cancel-card">
+                                    <div class="ol-cancel-icon">✕</div>
+                                    <div class="font-headline ol-cancel-title">訂單已取消</div>
+                                    <p class="font-body ol-cancel-desc">
+                                        此訂單已取消，餐點不會進行製作。<br />如有疑問請聯繫餐廳。
+                                    </p>
+                                    <a href="tel:0223456789" class="font-body ol-cancel-tel">
+                                        Tel: (02) 2345-6789
+                                    </a>
+                                </div>
+
+                                <!-- 一般：餐廳聯絡資訊 -->
+                                <section v-else class="ol-contact-section">
                                     <h3 class="font-label ol-section-title">餐廳聯絡資訊</h3>
                                     <p class="font-body ol-store-addr">台北市大安區慢食街 88 號</p>
                                     <a href="tel:0223456789" class="font-body ol-store-tel"
@@ -460,10 +463,24 @@
             </div>
         </div>
     </div>
+
+    <!-- ══ 餐點已完成 Modal ══ -->
+    <Teleport to="body">
+        <div v-if="showReadyModal" class="ol-ready-overlay">
+            <div class="ol-ready-modal">
+                <div class="ol-ready-icon">🍽</div>
+                <h2 class="font-headline ol-ready-title">餐點已完成！</h2>
+                <p class="font-body ol-ready-body">您的餐點已備妥，請至櫃台取餐並完成付款。</p>
+                <button class="ol-ready-btn font-label" @click="showReadyModal = false">
+                    確認
+                </button>
+            </div>
+        </div>
+    </Teleport>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import apiFetch from '@/utils/apiFetch'
 
 const lkOrderNum = ref('')
@@ -474,6 +491,17 @@ const searched = ref(false)
 const error = ref('')
 const results = ref([])
 const selectedOrder = ref(null)
+const showReadyModal = ref(false)
+
+// ── 備註清理：舊格式含取餐資訊時只取真正的備註部分 ──
+function displayNote(rawNote) {
+    if (!rawNote) return ''
+    if (/取餐時間[：:]|取餐人[：:]|餐具[：:]/.test(rawNote)) {
+        const m = rawNote.match(/備註[：:]\s*(.+)/)
+        return m ? m[1].trim() : ''
+    }
+    return rawNote
+}
 
 // 姓名必填 + 訂單編號/電話擇一必填
 const canSearch = computed(() => {
@@ -527,6 +555,66 @@ function resetSearch() {
 function openEditModal() {
     // TODO：開啟編輯取餐資料 Modal
 }
+
+// ── 輪詢：當查詢結果為 status=0（進行中）時，每 30 秒刷新一次 ──
+let _pollTimer = null
+
+function startLookupPolling(orderNum) {
+    stopLookupPolling()
+    _pollTimer = setInterval(async () => {
+        const cur = selectedOrder.value
+        if (!cur || cur.orderNumber !== orderNum) { stopLookupPolling(); return }
+        if (cur.orderStatus === 2 || cur.orderStatus === 3) { stopLookupPolling(); return }
+        try {
+            const res = await apiFetch(
+                `/Orders/TakeoutStatus?orderNumber=${encodeURIComponent(orderNum)}`
+            )
+            if (!res.ok) return
+            const data = await res.json()
+
+            const updateStatus = (s) => {
+                selectedOrder.value = { ...selectedOrder.value, orderStatus: s }
+                const idx = results.value.findIndex((r) => r.orderNumber === orderNum)
+                if (idx >= 0) results.value[idx] = { ...results.value[idx], orderStatus: s }
+            }
+
+            if (data.status === 1) {
+                // 餐點已完成（待取餐）→ 彈 Modal，停止輪詢
+                stopLookupPolling()
+                updateStatus(1)
+                showReadyModal.value = true
+            } else if (data.status === 2) {
+                stopLookupPolling()
+                updateStatus(2)
+            } else if (data.status === 3) {
+                stopLookupPolling()
+                updateStatus(3)
+            }
+            // status === 0 → 繼續輪詢
+        } catch {
+            // 靜默忽略
+        }
+    }, 30000)
+}
+
+function stopLookupPolling() {
+    if (_pollTimer !== null) {
+        clearInterval(_pollTimer)
+        _pollTimer = null
+    }
+}
+
+// 當切換到不同訂單時，重新決定是否啟動輪詢
+watch(selectedOrder, (order) => {
+    stopLookupPolling()
+    if (order && (order.orderStatus === 0 || order.orderStatus === 1)) {
+        startLookupPolling(order.orderNumber)
+    }
+})
+
+onUnmounted(() => {
+    stopLookupPolling()
+})
 </script>
 
 <style scoped>
@@ -610,7 +698,7 @@ function openEditModal() {
 }
 
 .ol-label {
-    font-size: 1rem;
+    font-size: 0.9rem;
     letter-spacing: 0.08em;
     color: rgba(201, 188, 168, 0.5);
     display: flex;
@@ -624,7 +712,7 @@ function openEditModal() {
     border-radius: 0.3rem;
     padding: 0.55rem 0.75rem;
     color: #f9ddd3;
-    font-size: 1rem;
+    font-size: 0.9rem;
     outline: none;
     width: 100%;
     box-sizing: border-box;
@@ -647,7 +735,7 @@ function openEditModal() {
 
 .ol-btn-group {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 0.5rem;
     padding-top: 0.5rem;
 }
@@ -703,7 +791,7 @@ function openEditModal() {
     color: #3b2f00;
     border: none;
     border-radius: 0.3rem;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 0.15em;
     cursor: pointer;
@@ -931,8 +1019,8 @@ function openEditModal() {
     display: flex;
     flex-direction: column;
     gap: 0;
-    height: 66vh;
-    overflow-y: auto;
+    height: 57vh;
+    overflow: hidden; /* 整體不捲動 */
 }
 .ol-detail-right {
     width: 480px;
@@ -1125,6 +1213,12 @@ function openEditModal() {
 .ol-items-detail {
     display: flex;
     flex-direction: column;
+    flex: 1;        /* 撐滿剩餘空間 */
+    min-height: 0;  /* flex 子元素縮小必要條件 */
+    overflow-y: auto;
+    /* 捲軸樣式（可選） */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(77, 70, 58, 0.4) transparent;
 }
 .ol-item {
     display: flex;
@@ -1142,7 +1236,7 @@ function openEditModal() {
 }
 .ol-item-right {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: flex-end;
     gap: 0.1rem;
     flex-shrink: 0;
@@ -1181,12 +1275,14 @@ function openEditModal() {
     display: flex;
     flex-direction: column;
     gap: 0.42rem;
+    flex-shrink: 0; /* 金額區塊固定，不被壓縮 */
 }
 .ol-meta-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 0.86rem;
+    flex-shrink: 0; /* 各金額列固定，不被壓縮 */
 }
 /* 三欄列：標籤 | 名稱（彈性） | 金額 */
 .ol-meta-row-3 {
@@ -1234,6 +1330,19 @@ function openEditModal() {
     padding: 0.3rem 0.7rem;
     margin-bottom: 0.5rem;
 }
+/* 已取消提示 */
+.ol-cancelled-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    color: #e07070;
+    background: rgba(224, 112, 112, 0.08);
+    border: 1px solid rgba(224, 112, 112, 0.25);
+    border-radius: 0.3rem;
+    padding: 0.3rem 0.7rem;
+    margin-bottom: 0.5rem;
+}
 /* 贈品活動來源標註 */
 .ol-gift-event-note {
     font-size: 0.76rem;
@@ -1248,6 +1357,7 @@ function openEditModal() {
     background: linear-gradient(90deg, transparent, #e4c285 50%, transparent);
     position: relative;
     max-width: 460px;
+    flex-shrink: 0; /* 分隔線固定，不被壓縮 */
 }
 .feather-divider::after {
     content: '◈';
@@ -1293,6 +1403,7 @@ function openEditModal() {
     color: rgba(208, 197, 181, 0.4);
     text-transform: uppercase;
     margin: 0 0 0.65rem;
+    flex-shrink: 0; /* 標題不縮，固定在頂部 */
 }
 
 /* ── 防呆提醒 ── */
@@ -1347,11 +1458,11 @@ function openEditModal() {
 .ol-item-qty {
     font-size: 0.82rem;
     color: rgba(208, 197, 181, 0.5);
-    margin-right: 0.4rem;
 }
 .ol-item-price {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: #d5b478;
+    white-space: nowrap;
 }
 
 /* 多筆切換 tab */
@@ -1417,5 +1528,160 @@ function openEditModal() {
     .ol-detail-right {
         width: 100%;
     }
+}
+
+/* ── 取消狀態：進度條全暗 ── */
+.ol-progress-cancelled .ol-prog-dot {
+    background: #1e100b !important;
+    border-color: rgba(77, 70, 58, 0.3) !important;
+    color: rgba(208, 197, 181, 0.2) !important;
+}
+.ol-progress-cancelled .ol-prog-lbl {
+    color: rgba(208, 197, 181, 0.2) !important;
+}
+
+/* ── 完成狀態：置中單一 badge ── */
+.ol-progress-done-single {
+    margin: 1rem 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.ol-done-single-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    background: linear-gradient(135deg, rgba(227, 199, 107, 0.15), rgba(198, 171, 83, 0.1));
+    border: 1.5px solid rgba(227, 199, 107, 0.45);
+    border-radius: 2rem;
+    padding: 0.6rem 1.5rem;
+    color: #e3c76b;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+}
+.ol-done-single-badge svg {
+    color: #e3c76b;
+    flex-shrink: 0;
+}
+/* 已結帳：改綠色 */
+.ol-done-paid-badge {
+    background: linear-gradient(135deg, rgba(126,200,126,0.15), rgba(100,170,100,0.1));
+    border-color: rgba(126, 200, 126, 0.45);
+    color: #7ec87e;
+}
+.ol-done-paid-badge svg {
+    color: #7ec87e;
+}
+
+/* ── 取消卡片（取代聯絡資訊卡片） ── */
+.ol-cancel-card {
+    background: rgba(224, 112, 112, 0.06);
+    border: 1.5px solid rgba(224, 112, 112, 0.35);
+    border-radius: 0.6rem;
+    padding: 1.25rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    text-align: center;
+}
+.ol-cancel-icon {
+    font-size: 1.8rem;
+    color: #e07070;
+    font-weight: 700;
+    line-height: 1;
+}
+.ol-cancel-title {
+    font-size: 1.15rem;
+    color: #e07070;
+    letter-spacing: 0.06em;
+    margin: 0;
+}
+.ol-cancel-desc {
+    font-size: 0.83rem;
+    color: rgba(208, 197, 181, 0.6);
+    margin: 0;
+    line-height: 1.6;
+}
+.ol-cancel-tel {
+    font-size: 0.85rem;
+    color: rgba(224, 112, 112, 0.7);
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+}
+.ol-cancel-tel:hover {
+    color: #e07070;
+}
+
+/* ── 餐點已完成 Modal ── */
+.ol-ready-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 4, 2, 0.82);
+    backdrop-filter: blur(4px);
+    z-index: 9800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.ol-ready-modal {
+    background: #271813;
+    border: 1px solid rgba(227, 199, 107, 0.35);
+    border-radius: 1rem;
+    padding: 2.5rem 2rem;
+    max-width: 400px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+    animation: ol-rm-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes ol-rm-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.88);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+.ol-ready-icon {
+    font-size: 2.8rem;
+}
+.ol-ready-title {
+    font-size: 1.6rem;
+    color: #e3c76b;
+    margin: 0;
+    letter-spacing: 0.05em;
+}
+.ol-ready-body {
+    font-size: 0.95rem;
+    color: rgba(208, 197, 181, 0.75);
+    text-align: center;
+    line-height: 1.6;
+    margin: 0;
+}
+.ol-ready-btn {
+    margin-top: 0.5rem;
+    width: 100%;
+    padding: 0.85rem;
+    background: linear-gradient(135deg, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    border: none;
+    border-radius: 0.4rem;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+.ol-ready-btn:hover {
+    filter: brightness(1.1);
 }
 </style>
