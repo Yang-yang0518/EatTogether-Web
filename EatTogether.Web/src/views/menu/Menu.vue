@@ -206,7 +206,7 @@
                         </p>
                         <div class="dish-footer">
                             <div class="dish-tags">
-                                <span class="tag rating-tag" v-if="dish.ratingCount > 0">★ {{ dish.averageScore.toFixed(1) }}</span>
+                                <span class="tag rating-tag" v-if="(dishRatingMap[dish.id]?.ratingCount ?? dish.ratingCount) > 0">★ {{ (dishRatingMap[dish.id]?.averageScore ?? dish.averageScore).toFixed(1) }}</span>
                                 <span class="tag veg-tag" v-if="dish.isVegetarian">🥬 素食</span>
                                 <span class="tag spicy-tag" v-if="dish.spicyLevel > 0">
                                     {{ '🌶️'.repeat(dish.spicyLevel) }}
