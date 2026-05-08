@@ -123,6 +123,12 @@
             </div>
           </div>
 
+          <!-- 候位未開放 -->
+          <div v-else-if="!queueStatus.open" class="card-eat p-5 text-center">
+            <i :class="`bi ${queueStatus.icon}`" style="font-size:2.5rem;opacity:.35;color:var(--eat-on-surface-variant)"></i>
+            <p class="eat-body-muted mt-3 mb-0">{{ queueStatus.message }}</p>
+          </div>
+
           <!-- 登記表單 -->
           <div v-else class="card-eat p-4 p-md-5">
             <h2 class="eat-h3 mb-4">填寫候位資訊</h2>
@@ -278,7 +284,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
@@ -358,6 +364,34 @@ onMounted(async () => {
   }
 })
 onUnmounted(() => clearInterval(refreshTimer))
+
+// ── 候位開放時間判斷 ──────────────────────────────
+const QUEUE_OPEN_HOUR   = 10
+const QUEUE_OPEN_MIN    = 30
+const QUEUE_CLOSE_HOUR  = 21
+const QUEUE_CLOSE_MIN   = 0
+
+const queueStatus = computed(() => {
+  const now = new Date()
+  const h = now.getHours()
+  const m = now.getMinutes()
+  const totalMin = h * 60 + m
+  const openMin  = QUEUE_OPEN_HOUR  * 60 + QUEUE_OPEN_MIN
+  const closeMin = QUEUE_CLOSE_HOUR * 60 + QUEUE_CLOSE_MIN
+
+  if (totalMin < openMin) {
+    const pad = n => String(n).padStart(2, '0')
+    return {
+      open: false,
+      message: `候位將於 ${pad(QUEUE_OPEN_HOUR)}:${pad(QUEUE_OPEN_MIN)} 開放`,
+      icon: 'bi-clock'
+    }
+  }
+  if (totalMin >= closeMin) {
+    return { open: false, message: '今日候位已結束，歡迎明日再來', icon: 'bi-moon-stars' }
+  }
+  return { open: true, message: '', icon: '' }
+})
 
 // ── Tab 切換 ──────────────────────────────────────
 const activeTab = ref('register')
