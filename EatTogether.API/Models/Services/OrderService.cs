@@ -290,14 +290,18 @@ namespace EatTogether.Models.Services
                     ? "待確認"
                     : noteDto.PickupTime;
 
-                await _notifyService.SendToMemberAsync(
-                    memberId: dto.MemberId.Value,
-                    type: "TAKEOUT_CREATED",
-                    referenceType: "Order",
-                    referenceId: preOrder.Id,
+                try {
+					await _notifyService.SendToMemberAsync(
+					memberId: dto.MemberId.Value,
+					type: "TAKEOUT_CREATED",
+					referenceType: "Order",
+					referenceId: preOrder.Id,
 					title: $"外帶訂單已成立｜{orderNumber}",
-                    message: $"預計取餐時間：{pickupTime}"
-				);
+					message: $"預計取餐時間：{pickupTime}"
+				    );
+				}
+                catch { /* 通知失敗不影響流程 */ }
+                
             }
 
 
@@ -477,14 +481,17 @@ namespace EatTogether.Models.Services
 				&& status == 1                                                // 廚房標記完成
 				&& preOrder.PreOrderDetails.All(d => d.DoneOrCancel == 1))   // 全部完成
 			{
-				await _notifyService.SendToMemberAsync(
+                try {
+					await _notifyService.SendToMemberAsync(
 					memberId: preOrder.MemberId.Value,
 					type: "TAKEOUT_READY",
 					referenceType: "Order",
 					referenceId: preOrder.Id,
 					title: $"餐點備妥，請至櫃台取餐｜{preOrder.OrderNumber}",
-                    message: $"請盡快前來取餐，以確保餐點最佳風味"
-				);
+					message: $"請盡快前來取餐，以確保餐點最佳風味"
+				    );
+				}
+                catch { /* 通知失敗不影響流程 */ }				
 			}
 		}
 
