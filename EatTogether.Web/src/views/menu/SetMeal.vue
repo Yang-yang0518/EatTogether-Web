@@ -824,7 +824,7 @@ onUnmounted(() => {
 }
 
 .setmeal-header {
-  padding: 8rem 0 4rem;
+  padding: 6rem 0 2.5rem;
   text-align: center;
   position: relative;
   overflow: hidden;
