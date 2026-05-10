@@ -51,6 +51,7 @@
                 </div>
             </main>
         </template>
+        <BackToTop />
     </div>
 </template>
 
@@ -61,6 +62,7 @@ import apiFetch from '@/utils/apiFetch.js'
 import NewsIntroHeader from '@/components/news/NewsIntroHeader.vue'
 import NewsArticleNav from '@/components/news/NewsArticleNav.vue'
 import { useToast } from '@/composables/useToast.js'
+import BackToTop from '@/components/news/BackToTop.vue'
 
 const route = useRoute()
 const router = useRouter()
