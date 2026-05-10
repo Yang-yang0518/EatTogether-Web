@@ -345,6 +345,45 @@ function switchToLogin() {
     registerSuccess.value = false
 }
 
+// ── Demo 快速填入 ──
+const isDev = import.meta.env.DEV
+
+const demoLoginAccounts = [
+    { label: '一般會員', account: 'amy_chen', password: 'Aa000000' },
+    { label: '黑名單會員', account: 'trouble_chen', password: 'Aa000000' },
+    { label: '未驗證會員', account: 'amy', password: 'Aa000000' },
+]
+
+const demoRegisterData = {
+    account: 'amy',
+    name: 'Amy',
+    email: 'chen.amy.eng@gmail.com',
+    password: 'Aa000000',
+    confirmPassword: 'Aa000000',
+}
+
+function fillDemoLogin(item) {
+    loginAccount.value = item.account
+    loginPassword.value = item.password
+    loginFormError.value = ''
+    showResendEmail.value = false
+    showAccountDeleted.value = false
+}
+
+function fillDemoRegister() {
+    regAccount.value = demoRegisterData.account
+    regName.value = demoRegisterData.name
+    regEmail.value = demoRegisterData.email
+    regPassword.value = demoRegisterData.password
+    regConfirmPassword.value = demoRegisterData.confirmPassword
+    regAccountError.value = ''
+    regNameError.value = ''
+    regEmailError.value = ''
+    regPasswordError.value = ''
+    regConfirmPasswordError.value = ''
+    regFormError.value = ''
+}
+
 onMounted(() => {
     const modalEl = document.querySelector('#authModal')
     modalEl.addEventListener('hidden.bs.modal', () => {
@@ -505,6 +544,22 @@ onMounted(() => {
                                     </div>
                                 </div>
 
+                                <!-- Demo 快速填入（僅開發環境顯示） -->
+                                <div v-if="isDev" class="demo-panel mb-1">
+                                    <p class="demo-panel__label">⚡ DEMO — 點擊自動填入</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button
+                                            v-for="item in demoLoginAccounts"
+                                            :key="item.account"
+                                            type="button"
+                                            class="demo-btn"
+                                            @click="fillDemoLogin(item)"
+                                        >
+                                            {{ item.label }}
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <!-- 帳號 -->
                                 <div>
                                     <label for="login-account" class="form-label d-block mb-1"
@@ -516,7 +571,7 @@ onMounted(() => {
                                         type="text"
                                         class="form-control w-100"
                                         placeholder="請輸入帳號"
-                                        autocomplete="username"
+                                        autocomplete="off"
                                     />
                                 </div>
 
@@ -611,6 +666,18 @@ onMounted(() => {
                                 <!-- 通用錯誤橫幅 -->
                                 <div v-if="regFormError" class="auth-error-banner" role="alert">
                                     {{ regFormError }}
+                                </div>
+
+                                <!-- Demo 快速填入（僅開發環境顯示） -->
+                                <div v-if="isDev" class="demo-panel mb-1">
+                                    <p class="demo-panel__label">⚡ DEMO — 點擊自動填入</p>
+                                    <button
+                                        type="button"
+                                        class="demo-btn"
+                                        @click="fillDemoRegister"
+                                    >
+                                        示範填入
+                                    </button>
                                 </div>
 
                                 <!-- 帳號 -->
@@ -850,5 +917,37 @@ onMounted(() => {
 /* ── Success ── */
 .auth-success-box {
     color: var(--eat-on-surface);
+}
+
+/* ── Demo Panel ── */
+.demo-panel {
+    background: color-mix(in srgb, var(--eat-primary) 10%, transparent);
+    border: 1px dashed var(--eat-primary);
+    border-radius: var(--eat-radius-sm);
+    padding: 0.5rem 0.75rem;
+}
+
+.demo-panel__label {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: var(--eat-primary);
+    margin-bottom: 0.4rem;
+    font-family: var(--font-label);
+}
+
+.demo-btn {
+    background: var(--eat-primary);
+    color: var(--eat-on-primary, #1a1200);
+    border: none;
+    border-radius: var(--eat-radius-sm);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.78rem;
+    font-family: var(--font-label);
+    cursor: pointer;
+    transition: var(--eat-transition);
+}
+
+.demo-btn:hover {
+    opacity: 0.85;
 }
 </style>

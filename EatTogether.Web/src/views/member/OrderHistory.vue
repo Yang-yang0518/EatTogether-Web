@@ -157,6 +157,7 @@ onUnmounted(() => {
                     :enable-time-picker="false"
                     auto-apply
                     style="width: 180px"
+                    :formats="{ input: 'yyyy/MM/dd' }"
                 />
                 <span class="eat-label" style="color: var(--eat-on-surface-variant)">—</span>
                 <VueDatePicker
@@ -165,6 +166,7 @@ onUnmounted(() => {
                     :enable-time-picker="false"
                     auto-apply
                     style="width: 180px"
+                    :formats="{ input: 'yyyy/MM/dd' }"
                 />
             </div>
         </div>
