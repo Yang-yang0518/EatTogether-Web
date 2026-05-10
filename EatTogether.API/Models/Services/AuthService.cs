@@ -537,6 +537,11 @@ namespace EatTogether.API.Models.Services
 					if (existingMember.IsBlacklisted)
 						return Result<MemberViewModel>.Fail("account_blacklisted");
 
+					// 一般帳號（有密碼）不允許透過第三方登入自動綁定
+					// 需登入後在會員中心手動點「前往連結」才能綁定
+					if (existingMember.HashedPassword != HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
+						return Result<MemberViewModel>.Fail("account_exists_use_password");
+
 					// 未驗證帳號視為 Google 已驗證，自動設為已驗證
 					if (!existingMember.IsConfirmed)
 					{
@@ -552,6 +557,7 @@ namespace EatTogether.API.Models.Services
 						Provider = "google",
 						ProviderUserId = providerUserId,
 						AvatarUrl = avatarUrl,
+						ProviderEmail = email,
 						CreatedAt = DateTime.Now,
 					});
 					await _emailService.SendSecurityNoticeAsync(
@@ -580,6 +586,7 @@ namespace EatTogether.API.Models.Services
 						Provider = "google",
 						ProviderUserId = providerUserId,
 						AvatarUrl = avatarUrl,
+						ProviderEmail = email,
 						CreatedAt = DateTime.Now,
 					});
 					member = newMember;

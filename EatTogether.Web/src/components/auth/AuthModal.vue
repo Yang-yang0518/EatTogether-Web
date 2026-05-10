@@ -386,6 +386,7 @@ function fillDemoRegister() {
 
 onMounted(() => {
     const modalEl = document.querySelector('#authModal')
+
     modalEl.addEventListener('hidden.bs.modal', () => {
         // 登入表單重置
         loginAccount.value = ''

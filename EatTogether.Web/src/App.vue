@@ -32,16 +32,26 @@ onMounted(() => {
         router.push(route.query.redirect)
     }
 
-    // ── auth:expired 事件監聽 ────────────────────────────
-    // apiFetch refresh token 失敗時會發出此事件
-    // 由 App.vue 統一處理導頁與開啟登入 Modal，確保只執行一次
-    window.addEventListener('auth:expired', async () => {
-        await router.push('/')
+    // 開啟 AuthModal 的共用邏輯
+    async function openAuthModal() {
         const modalEl = document.querySelector('#authModal')
         if (modalEl) {
             const { Modal } = await import('bootstrap')
             Modal.getOrCreateInstance(modalEl).show()
         }
+    }
+
+    // ── auth:expired 事件監聽 ────────────────────────────
+    // apiFetch refresh token 失敗時會發出此事件
+    // 由 App.vue 統一處理導頁與開啟登入 Modal，確保只執行一次
+    window.addEventListener('auth:expired', async () => {
+        await router.push('/')
+        openAuthModal()
+    })
+
+    // 供 GoogleCallback blocked 狀態的「前往登入」按鈕觸發
+    window.addEventListener('auth:open-modal', () => {
+        openAuthModal()
     })
 })
 </script>

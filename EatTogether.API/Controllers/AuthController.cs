@@ -283,6 +283,11 @@ namespace EatTogether.API.Controllers
 						Message = "登入失敗，請聯絡客服",
 						ErrorCode = "login_failed"
 					}),
+					"account_exists_use_password" => Ok(new
+					{
+						status = "account_exists_use_password",
+						message = "此 Email 已有帳號，請使用帳號密碼登入，登入後可至會員中心連結 Google 帳號"
+					}),
 					_ => BadRequest(new ErrorViewModel
 					{
 						Message = "Google 登入失敗，請重試",
