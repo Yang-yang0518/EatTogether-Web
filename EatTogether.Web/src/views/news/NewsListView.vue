@@ -87,6 +87,7 @@
             </template>
         </section>
     </main>
+    <BackToTop />
 </template>
 
 <script setup>
@@ -94,6 +95,7 @@ import { ref, watch, onMounted } from 'vue'
 import apiFetch from '@/utils/apiFetch.js'
 import NewsCard from '@/components/news/NewsCard.vue'
 import NewsSidebar from '@/components/news/NewsSidebar.vue'
+import BackToTop from '@/components/news/BackToTop.vue'
 
 // ── 分類（對應後台 ArticleCategory 名稱）
 const categories = [
