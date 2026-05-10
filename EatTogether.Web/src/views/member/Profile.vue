@@ -60,6 +60,7 @@ const thirdPartyProviders = computed(() => [
         label: 'Google',
         icon: 'bi bi-google',
         linked: authStore.member.googleLinked,
+        linkedEmail: authStore.member.googleEmail,
         canUnlink: canUnlinkGoogle.value,
         canUnlinkHint: '請先建立一般帳號或連結其他第三方帳號，才能取消連結',
         isUnlinking: unlinkingProvider.value === 'google',
@@ -259,7 +260,7 @@ async function unlinkGoogle() {
 }
 
 function linkGoogle() {
-    const state = generateState('/member')
+    const state = generateState('/member', 'link') // 傳入 action = 'link'
     const url = buildGoogleOAuthUrl(state)
     window.location.href = url
 }
@@ -508,7 +509,17 @@ onUnmounted(() => {
                                 class="login-method-hint"
                                 :style="provider.linked ? 'color: var(--eat-primary)' : ''"
                             >
-                                {{ provider.linked ? '已連結' : '尚未連結' }}
+                                <template v-if="provider.linked">
+                                    已連結
+                                    <span
+                                        v-if="provider.linkedEmail"
+                                        class="eat-body-muted"
+                                        style="font-size: 0.8rem"
+                                    >
+                                        {{ provider.linkedEmail }}
+                                    </span>
+                                </template>
+                                <template v-else>尚未連結</template>
                             </div>
                         </div>
                     </div>

@@ -346,6 +346,57 @@ namespace EatTogether.API.Controllers
 			return Ok(new SuccessViewModel { Message = "已取消與 Google 帳號的連結" });
 		}
 
+		// 會員中心連結 Google
+		// POST /api/members/me/google-link
+		[HttpPost("me/google-link")]
+		[Authorize]
+		[EnableRateLimiting("AuthPolicy")]
+		public async Task<IActionResult> LinkGoogle([FromBody] GoogleCallbackDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
+			int memberId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+			var result = await _memberService.LinkGoogleAsync(memberId, dto.Code);
+
+			if (!result.IsSuccess)
+			{
+				return result.ErrorMessage switch
+				{
+					"member_not_found" => NotFound(new ErrorViewModel
+					{
+						Message = "找不到會員",
+						ErrorCode = "member_not_found"
+					}),
+					"member_blacklisted" => StatusCode(403, new ErrorViewModel
+					{
+						Message = "此帳號已被停權",
+						ErrorCode = "member_blacklisted"
+					}),
+					"email_not_confirmed" => BadRequest(new ErrorViewModel
+					{
+						Message = "請先驗證您的信箱",
+						ErrorCode = "email_not_confirmed"
+					}),
+					"google_already_linked_to_other" => Conflict(new ErrorViewModel
+					{
+						Message = "此 Google 帳號已被其他帳號綁定",
+						ErrorCode = "google_already_linked_to_other"
+					}),
+					"google_auth_failed" => BadRequest(new ErrorViewModel
+					{
+						Message = "Google 驗證失敗，請重試",
+						ErrorCode = "google_auth_failed"
+					}),
+					_ => BadRequest(new ErrorViewModel { Message = "連結失敗，請稍後再試" })
+				};
+			}
+
+			// 只回傳成功，絕不簽發或更新 JWT Cookie
+			return Ok(new SuccessViewModel { Message = "Google 帳號已成功連結" });
+		}
+
 		/// <summary>
 		/// 申請刪除帳號 (第一步)
 		/// </summary>

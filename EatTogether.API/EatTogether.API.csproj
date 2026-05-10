@@ -8,7 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include=".claude\worktrees\kind-elion-cfa8af\EatTogether.API\efpt.config.json" />
+    <Compile Remove=".claude\**" />
+    <Content Remove=".claude\**" />
+    <EmbeddedResource Remove=".claude\**" />
+    <None Remove=".claude\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,7 +31,6 @@
 
 
   <ItemGroup>
-    <None Include=".claude\worktrees\kind-elion-cfa8af\EatTogether.API\efpt.config.json.user" />
     <None Include="efpt.config.json.user" />
   </ItemGroup>
 

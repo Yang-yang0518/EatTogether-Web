@@ -3,6 +3,8 @@ using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
 using EatTogether.API.Models.Repositories;
 using EatTogether.API.Models.ViewModels;
+using Google.Apis.Auth;
+using System.Text.Json;
 
 namespace EatTogether.API.Models.Services
 {
@@ -15,6 +17,7 @@ namespace EatTogether.API.Models.Services
 		Task<Result> RequestEmailChangeAsync(int memberId, RequestEmailChangeDto dto);
 		Task<Result> CreateAccountAsync(int memberId, CreateAccountDto dto);
 		Task<Result> UnlinkGoogleAsync(int memberId);
+		Task<Result> LinkGoogleAsync(int memberId, string code);
 
 		// 刪除帳號為兩步驟
 		Task<Result> RequestDeleteAccountAsync(int memberId, DeleteAccountDto dto);  // 第一步:申請刪除
@@ -96,6 +99,7 @@ namespace EatTogether.API.Models.Services
 				BirthDate = member.BirthDate,
 				AvatarFileName = member.AvatarFileName,
 				GoogleAvatarUrl = googleLogin?.AvatarUrl,
+				GoogleEmail = googleLogin?.ProviderEmail,
 				HashedPasswordStatus = member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD
 					? "EXTERNAL_LOGIN_NO_PASSWORD"
 					: "HAS_PASSWORD",
@@ -288,6 +292,86 @@ namespace EatTogether.API.Models.Services
 
 			await _memberRepo.DeleteExternalLoginAsync(memberId, "google");
 			await _emailService.SendSecurityNoticeAsync(member.Email, "您已取消與 Google 帳號的連結");
+			return Result.Success();
+		}
+
+		// 會員中心連結 Google（只綁定，絕不切換登入身份）
+		public async Task<Result> LinkGoogleAsync(int memberId, string code)
+		{
+			// 1. 驗證當前登入會員狀態
+			var member = await _memberRepo.GetMemberByIdAsync(memberId);
+			var validation = ValidateMemberStatusStrict(member);
+			if (!validation.IsSuccess)
+				return validation;
+
+			// 2. 用 code 向 Google 換取 id_token
+			var clientId = _config["Google:ClientId"]!;
+			var clientSecret = _config["Google:ClientSecret"]!;
+			var redirectUri = _config["Google:RedirectUri"]!;
+
+			using var httpClient = new HttpClient();
+			var tokenResponse = await httpClient.PostAsync(
+				"https://oauth2.googleapis.com/token",
+				new FormUrlEncodedContent(new Dictionary<string, string>
+				{
+					["code"] = code,
+					["client_id"] = clientId,
+					["client_secret"] = clientSecret,
+					["redirect_uri"] = redirectUri,
+					["grant_type"] = "authorization_code",
+				}));
+
+			if (!tokenResponse.IsSuccessStatusCode)
+				return Result.Fail("google_auth_failed");
+
+			var tokenJson = await tokenResponse.Content.ReadAsStringAsync();
+			using var doc = JsonDocument.Parse(tokenJson);
+			if (!doc.RootElement.TryGetProperty("id_token", out var idTokenElement))
+				return Result.Fail("google_auth_failed");
+
+			var idToken = idTokenElement.GetString()!;
+
+			// 3. 驗證 id_token，解析 sub 與 avatarUrl
+			GoogleJsonWebSignature.Payload payload;
+			try
+			{
+				payload = await GoogleJsonWebSignature.ValidateAsync(
+					idToken,
+					new GoogleJsonWebSignature.ValidationSettings
+					{
+						Audience = new[] { clientId }
+					});
+			}
+			catch
+			{
+				return Result.Fail("google_auth_failed");
+			}
+
+			var providerUserId = payload.Subject;
+			var email = payload.Email;
+			var avatarUrl = payload.Picture;
+
+			// 4. 檢查這個 Google sub 是否已被任何帳號綁定（不限當前會員）
+			var existingLogin = await _memberRepo.GetExternalLoginByProviderAsync("google", providerUserId);
+			if (existingLogin != null)
+				return Result.Fail("google_already_linked_to_other");
+
+			// 5. 寫入綁定（MemberId = 當前登入者，絕不切換身份、不簽發 JWT）
+			await _memberRepo.CreateExternalLoginAsync(new MemberExternalLogin
+			{
+				MemberId = memberId,
+				Provider = "google",
+				ProviderUserId = providerUserId,
+				AvatarUrl = avatarUrl,
+				ProviderEmail = email,
+				CreatedAt = DateTime.Now,
+			});
+
+			// 6. 寄安全通知信
+			await _emailService.SendSecurityNoticeAsync(
+				member.Email,
+				"您的帳號已新增 Google 登入，若非本人操作請立即修改密碼");
+
 			return Result.Success();
 		}
 

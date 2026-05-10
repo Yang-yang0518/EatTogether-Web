@@ -10,6 +10,7 @@ const INITIAL_MEMBER = () => ({
     birthDate: null,
     avatarFileName: null,
     googleAvatarUrl: null,
+    googleEmail: null,
     hashedPasswordStatus: '', // 'HAS_PASSWORD' | 'EXTERNAL_LOGIN_NO_PASSWORD'
     googleLinked: false,
 })
