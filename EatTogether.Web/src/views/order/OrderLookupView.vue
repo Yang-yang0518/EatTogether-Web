@@ -50,6 +50,9 @@
 
                     <p v-if="error" class="ol-error font-label">{{ error }}</p>
 
+                    <!-- 展示用：快速填入測試資料 -->
+                    <button class="ol-demo-btn font-label" @click="fillDemo">▶ 展示</button>
+
                     <div class="ol-btn-group">
                         <button class="ol-reset-btn font-label" @click="resetSearch">✖ 重置</button>
                         <button
@@ -466,7 +469,7 @@
 
                                 <!-- 修改取餐資訊按鈕（靠底部） -->
                                 <div
-                                    v-if="selectedOrder.orderStatus !== 2"
+                                    v-if="selectedOrder.orderStatus === 0"
                                     class="ol-edit-pickup-wrap"
                                 >
                                     <button
@@ -580,6 +583,12 @@ async function doLookup() {
         searching.value = false
         searched.value = true
     }
+}
+
+function fillDemo() {
+    lkName.value     = '陳怡伶'
+    lkPhone.value    = '0912111001'
+    lkOrderNum.value = ''
 }
 
 function resetSearch() {
@@ -814,6 +823,26 @@ async function handlePickupSaved(data) {
     color: #e07070;
     margin: 0 0 0.75rem;
     text-align: center;
+}
+
+/* 展示按鈕 */
+.ol-demo-btn {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    background: rgba(227, 199, 107, 0.08);
+    border: 1px dashed rgba(227, 199, 107, 0.4);
+    border-radius: 0.3rem;
+    color: rgba(227, 199, 107, 0.7);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.ol-demo-btn:hover {
+    background: rgba(227, 199, 107, 0.14);
+    border-color: rgba(227, 199, 107, 0.65);
+    color: #e3c76b;
 }
 
 .ol-btn-group {

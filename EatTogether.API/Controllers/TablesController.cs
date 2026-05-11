@@ -37,7 +37,7 @@ namespace EatTogether.API.Controllers
 
             // QR Code 內容：前台內用點餐頁 URL + table 桌名
             var frontendBase = _config["FrontendBaseUrl"] ?? "http://localhost:5173";
-            var qrContent    = $"{frontendBase}/in?table={Uri.EscapeDataString(table.TableName)}";
+            var qrContent    = $"{frontendBase}/dinein?table={Uri.EscapeDataString(table.TableName)}";
 
             using var qrGenerator = new QRCodeGenerator();
             using var qrData      = qrGenerator.CreateQrCode(qrContent, QRCodeGenerator.ECCLevel.Q);

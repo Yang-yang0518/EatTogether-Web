@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>桌位 QR Code</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --accent: #e8c87a;
+    --text: #f0ede6;
+    --muted: #888;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', 'Noto Sans TC', monospace;
+    padding: 40px 24px;
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin: 32px 0 12px;
+    border-left: 2px solid var(--accent);
+    padding-left: 10px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+  }
+
+  .qr-wrap {
+    background: #fff;
+    padding: 8px;
+    border-radius: 2px;
+    width: 140px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qr-wrap canvas, .qr-wrap img {
+    width: 124px !important;
+    height: 124px !important;
+  }
+
+  .print-btn {
+    display: block;
+    margin: 48px auto 0;
+    padding: 12px 36px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .print-btn:hover {
+    background: var(--accent);
+    color: #000;
+  }
+
+  @media print {
+    body { background: #fff; color: #000; padding: 10px; }
+    header h1 { color: #000; }
+    .section-label { color: #555; border-color: #000; }
+    .card { background: #fff; border: 1px solid #ccc; break-inside: avoid; }
+    .card-title { color: #000; }
+    .print-btn { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>桌位 QR Code</h1>
+</header>
+
+<div id="app"></div>
+
+<button class="print-btn" onclick="window.print()">列印全部</button>
+
+<script>
+const BASE_URL = "http://localhost:5173/dineIn?table=";
+
+const tables = {
+  "A 區": ["A1","A2","A3","A4"],
+  "B 區": ["B1","B2","B3","B4","B5","B6"],
+  "C 區": ["C1","C2","C3","C4"],
+  "OUT 區": ["OUT1","OUT2","OUT3"],
+  "VIP 區": ["VIP1","VIP2"],
+};
+
+const app = document.getElementById('app');
+
+for (const [section, names] of Object.entries(tables)) {
+  const label = document.createElement('div');
+  label.className = 'section-label';
+  label.textContent = section;
+  app.appendChild(label);
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+
+  for (const name of names) {
+    const url = BASE_URL + name;
+
+    const card = document.createElement('a');
+    card.className = 'card';
+    card.href = url;
+    card.target = '_blank';
+    card.rel = 'noopener noreferrer';
+
+    const title = document.createElement('div');
+    title.className = 'card-title';
+    title.textContent = name;
+
+    const qrWrap = document.createElement('div');
+    qrWrap.className = 'qr-wrap';
+    qrWrap.id = 'qr-' + name;
+
+    card.appendChild(title);
+    card.appendChild(qrWrap);
+    grid.appendChild(card);
+  }
+
+  app.appendChild(grid);
+}
+
+setTimeout(() => {
+  for (const names of Object.values(tables)) {
+    for (const name of names) {
+      const url = BASE_URL + name;
+      new QRCode(document.getElementById('qr-' + name), {
+        text: url,
+        width: 124,
+        height: 124,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+  }
+}, 100);
+</script>
+</body>
+</html>

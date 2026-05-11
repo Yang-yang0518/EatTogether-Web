@@ -321,12 +321,12 @@
                             v-if="
                                 cat.isDividerBefore ||
                                 (idx > 0 &&
-                                !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
-                                    cat.key
-                                ) &&
-                                ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
-                                    sidebarCategories[idx - 1].key
-                                ))
+                                    !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
+                                        cat.key
+                                    ) &&
+                                    ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
+                                        sidebarCategories[idx - 1].key
+                                    ))
                             "
                             class="cat-divider"
                         ></div>
@@ -1217,7 +1217,9 @@
                     ? (store.lines.find((l) => l.lineId === editingMealLineId)?.note ?? '')
                     : ''
             "
-            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : demoMealInitialSel"
+            :initial-sel="
+                editingMealLineId !== null ? buildInitialSel(editingMealLineId) : demoMealInitialSel
+            "
             @close="((activeMeal = null), (editingMealLineId = null), (demoMealInitialSel = {}))"
             @confirm="onSetMealConfirm"
         />
@@ -1542,6 +1544,7 @@ onMounted(async () => {
         activeSidebarCat.value = sidebarCategories.value[0]?.key ?? ''
     } catch (err) {
         loadError.value = '菜單載入失敗，請稍後再試。'
+        tableStatus.value = 'not-found' // API 失敗時不讓頁面永遠卡在 checking
         console.error(err)
     } finally {
         loading.value = false
@@ -1574,18 +1577,16 @@ function resolveImage(url) {
 // ── 展示用分類（從真實 products 過濾，保留真實 productId / setMealId / 價格）──
 const DEMO_CATEGORY_KEY = '展示'
 const DEMO_SPECS = [
-    { name: '香烤雞腿排',   defaultQty: 1 },
-    { name: '全家分享餐',   defaultQty: 1 },
+    { name: '香烤雞腿排', defaultQty: 1 },
+    { name: '全家分享餐', defaultQty: 1 },
     { name: '奶油培根燉飯', defaultQty: 3 },
     { name: '瑪格麗特披薩', defaultQty: 1 },
 ]
 const demoDishes = computed(() =>
-    DEMO_SPECS
-        .map(({ name, defaultQty }) => {
-            const p = products.value.find((p) => p.productName === name)
-            return p ? { ...p, defaultQty } : null
-        })
-        .filter(Boolean)
+    DEMO_SPECS.map(({ name, defaultQty }) => {
+        const p = products.value.find((p) => p.productName === name)
+        return p ? { ...p, defaultQty } : null
+    }).filter(Boolean)
 )
 
 // 一般分類排序（特殊的今日推薦/主廚特選不在此列）
@@ -1636,7 +1637,12 @@ const sidebarCategories = computed(() => {
         ...specials,
         allEntry,
         ...cats,
-        { key: DEMO_CATEGORY_KEY, label: DEMO_CATEGORY_KEY, count: demoDishes.value.length, isDividerBefore: true },
+        {
+            key: DEMO_CATEGORY_KEY,
+            label: DEMO_CATEGORY_KEY,
+            count: demoDishes.value.length,
+            isDividerBefore: true,
+        },
     ]
 })
 
