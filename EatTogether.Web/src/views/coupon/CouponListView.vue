@@ -25,6 +25,40 @@
     <!-- 主體 -->
     <div class="coupon-body">
 
+      <!-- ── 即將上線區塊 ── -->
+      <div v-if="upcomingCoupons.length" class="upcoming-section">
+        <div class="upcoming-header">
+          <div class="upcoming-title-group">
+            <i class="bi bi-alarm upcoming-alarm"></i>
+            <span class="upcoming-title">即將登場</span>
+            <span class="upcoming-sub">搶先預覽，準時開抢！</span>
+          </div>
+          <span class="upcoming-badge">{{ upcomingCoupons.length }} 張即將上線</span>
+        </div>
+        <div class="upcoming-track">
+          <div
+            v-for="u in upcomingCoupons"
+            :key="u.id"
+            class="upcoming-card"
+          >
+            <!-- 鎖定覆蓋層 -->
+            <div class="upcoming-lock">
+              <i class="bi bi-lock-fill lock-icon"></i>
+              <span class="lock-date">{{ formatStartDate(u.startDate) }} 開放</span>
+            </div>
+            <!-- 卡片主體（模糊處理） -->
+            <div class="upcoming-inner">
+              <div class="upcoming-discount">{{ u.discountDescription }}</div>
+              <div v-if="u.minSpend > 0" class="upcoming-minspend">滿 ${{ u.minSpend }}</div>
+              <div class="upcoming-name">{{ u.name }}</div>
+              <div class="upcoming-countdown">
+                <i class="bi bi-clock me-1"></i>{{ daysUntil(u.startDate) }} 天後開放
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 工具列 -->
       <div class="coupon-toolbar">
         <div class="toolbar-left">
@@ -118,11 +152,12 @@ watch(() => authStore.isLoggedIn, (loggedIn) => {
   }
 })
 
-const coupons       = ref([])
-const loading       = ref(true)
-const activeFilter  = ref('all')
-const birthdayOnly  = ref(false)
-const myUsableCount = ref(0)
+const coupons         = ref([])
+const upcomingCoupons = ref([])
+const loading         = ref(true)
+const activeFilter    = ref('all')
+const birthdayOnly    = ref(false)
+const myUsableCount   = ref(0)
 
 const filters = [
   { key: 'all', label: '全部',    icon: 'bi bi-grid' },
@@ -154,6 +189,21 @@ async function fetchCoupons() {
   }
 }
 
+async function fetchUpcoming() {
+  try {
+    const res = await apiFetch('/Coupons/Upcoming')
+    if (res.ok) upcomingCoupons.value = await res.json()
+  } catch { /* ignore */ }
+}
+
+function daysUntil(dt) {
+  return Math.ceil((new Date(dt) - Date.now()) / 86400000)
+}
+
+function formatStartDate(dt) {
+  return new Date(dt).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
+}
+
 async function fetchMyUsableCount() {
   if (!authStore.isLoggedIn) return
   try {
@@ -171,6 +221,7 @@ async function fetchMyUsableCount() {
 onMounted(() => {
   fetchCoupons()
   fetchMyUsableCount()
+  fetchUpcoming()
 })
 </script>
 
@@ -214,6 +265,154 @@ onMounted(() => {
   max-width: 1160px;
   margin: 0 auto;
   padding: 3rem 2rem 6rem;
+}
+
+/* ── 即將上線 ─────────────────────────────────────── */
+.upcoming-section {
+  margin-bottom: 2.5rem;
+  background: var(--eat-surface-container);
+  border: 1px solid var(--eat-outline-variant);
+  border-radius: var(--eat-radius-lg);
+  overflow: hidden;
+}
+
+.upcoming-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .85rem 1.5rem;
+  border-bottom: 1px solid var(--eat-outline-variant);
+  background: linear-gradient(90deg, rgba(227,199,107,.06) 0%, transparent 60%);
+}
+.upcoming-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.upcoming-alarm {
+  color: var(--eat-primary);
+  font-size: 1rem;
+  animation: ring .8s ease infinite alternate;
+}
+@keyframes ring {
+  from { transform: rotate(-12deg); }
+  to   { transform: rotate(12deg);  }
+}
+.upcoming-title {
+  font-family: var(--font-headline);
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--eat-on-surface);
+  letter-spacing: .04em;
+}
+.upcoming-sub {
+  font-family: var(--font-body);
+  font-size: .75rem;
+  color: var(--eat-on-surface-variant);
+  opacity: .6;
+  font-style: italic;
+}
+.upcoming-badge {
+  font-family: var(--font-label);
+  font-size: .7rem;
+  letter-spacing: .1em;
+  color: var(--eat-secondary);
+  background: rgba(227,199,107,.1);
+  border: 1px solid rgba(227,199,107,.2);
+  border-radius: 50px;
+  padding: .18rem .75rem;
+}
+
+/* 橫向捲動列 */
+.upcoming-track {
+  display: flex;
+  gap: 14px;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.upcoming-track::-webkit-scrollbar { display: none; }
+
+/* 單張預覽卡 */
+.upcoming-card {
+  position: relative;
+  flex: 0 0 180px;
+  height: 140px;
+  border-radius: var(--eat-radius-md);
+  border: 1px solid var(--eat-outline-variant);
+  overflow: hidden;
+  scroll-snap-align: start;
+  background: linear-gradient(150deg, #2a1308 0%, #1a0d07 100%);
+  transition: border-color .2s;
+}
+.upcoming-card:hover {
+  border-color: rgba(227,199,107,.3);
+}
+
+/* 模糊底層 */
+.upcoming-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 1rem;
+  text-align: center;
+  filter: blur(4px);
+  opacity: .4;
+  user-select: none;
+}
+.upcoming-discount {
+  font-family: var(--font-headline);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--eat-primary);
+}
+.upcoming-minspend {
+  font-size: .62rem;
+  color: var(--eat-on-surface-variant);
+  font-family: var(--font-label);
+}
+.upcoming-name {
+  font-size: .75rem;
+  color: var(--eat-on-surface);
+  font-family: var(--font-label);
+}
+.upcoming-countdown {
+  font-size: .62rem;
+  color: var(--eat-secondary);
+}
+
+/* 鎖定覆蓋 */
+.upcoming-lock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(15, 8, 4, .55);
+  backdrop-filter: blur(1px);
+  z-index: 2;
+}
+.lock-icon {
+  font-size: 1.4rem;
+  color: var(--eat-primary);
+  opacity: .85;
+}
+.lock-date {
+  font-family: var(--font-label);
+  font-size: .72rem;
+  letter-spacing: .1em;
+  color: var(--eat-primary);
+  background: rgba(227,199,107,.12);
+  border: 1px solid rgba(227,199,107,.25);
+  border-radius: 50px;
+  padding: .2rem .75rem;
 }
 
 /* ── 工具列 ──────────────────────────────────────── */
