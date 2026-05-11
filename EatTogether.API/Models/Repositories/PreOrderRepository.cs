@@ -38,6 +38,8 @@ namespace EatTogether.Models.Repositories
         Task<int?> GetTakeoutStatusByOrderNumberAsync(string orderNumber);
         /// <summary>當日會員是否已在未取消的訂單中套用此優惠券</summary>
         Task<bool> IsCouponInActiveTodayOrderAsync(int couponId, int memberId);
+        /// <summary>依訂單編號取得當日外帶訂單實體（修改取餐資訊用）</summary>
+        Task<PreOrder?> GetTodayTakeoutByOrderNumberAsync(string orderNumber);
     }
 
     public class PreOrderRepository : IPreOrderRepository
@@ -286,6 +288,19 @@ namespace EatTogether.Models.Repositories
                 .FirstOrDefaultAsync();
             if (order == null) return null;
             return ComputeTakeoutStatus(order.DoneOrCancel, order.PreOrderDetails);
+        }
+
+        public async Task<PreOrder?> GetTodayTakeoutByOrderNumberAsync(string orderNumber)
+        {
+            var today    = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+            return await _context.PreOrders
+                .Include(p => p.PreOrderDetails)
+                .Where(p => p.OrderNumber == orderNumber
+                         && !p.InOrOut
+                         && p.OrderAt >= today
+                         && p.OrderAt < tomorrow)
+                .FirstOrDefaultAsync();
         }
 
         /// <summary>

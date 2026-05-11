@@ -156,6 +156,19 @@ namespace EatTogether.API.Controllers
             return Ok(new { orderNumber, status });
         }
 
+        // 前台修改取餐資訊（僅限製作中 / 餐點完成，未付款前可改）
+        [HttpPut("UpdatePickupInfo")]
+        [AllowAnonymous]
+        public async Task<IActionResult> UpdatePickupInfo([FromBody] UpdatePickupInfoDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.OrderNumber))
+                return BadRequest("請提供訂單編號");
+
+            var ok = await _service.UpdatePickupInfoAsync(dto);
+            if (!ok) return BadRequest("訂單不存在或已無法修改");
+            return Ok();
+        }
+
         // 會員歷史訂單
         [HttpGet("MemberOrderHistory")]
         [AllowAnonymous]
