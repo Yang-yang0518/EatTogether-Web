@@ -9,7 +9,7 @@
                 <i v-if="article.isPinned" class="bi bi-pin-fill detail-pin-icon"></i>
             </div>
             <div class="detail-title-row">
-                <h1 class="eat-h1 detail-title">{{ article.title }}</h1>
+                <h1 class="detail-title eat-h1">{{ article.title }}</h1>
             </div>
             <span class="detail-eyebrow">{{ article.categoryName }}</span>
             <div class="detail-meta-row">
@@ -90,7 +90,6 @@ function formatDate(dateStr) {
     position: relative;
 }
 .detail-title {
-    /* line-height: 3.5; */
     margin: 0;
 }
 .detail-pin-icon {
@@ -108,11 +107,13 @@ function formatDate(dateStr) {
 .detail-eyebrow {
     display: block;
     font-family: var(--font-label);
-    font-size: 0.68rem;
+    font-size: 0.9rem;
     letter-spacing: 0.4em;
     text-transform: uppercase;
     color: var(--eat-secondary);
-    margin-left: 0.5rem;
+    margin-left: 0.6rem;
+    line-height: 2;
+    padding-top: 1em;
 }
 .detail-meta-row {
     position: relative;
@@ -120,11 +121,11 @@ function formatDate(dateStr) {
     align-items: center;
     gap: 0.5rem;
     font-family: var(--font-label);
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     color: var(--eat-on-surface-variant);
-    opacity: 0.5;
-    margin-left: 0.5rem;
-    line-height: 1.2;
+    opacity: 0.8;
+    margin-left: 0.6rem;
+    line-height: 1;
 }
 .detail-sep {
     opacity: 0.4;

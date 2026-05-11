@@ -156,9 +156,10 @@ onMounted(fetchNews)
 <style scoped>
 /* ── Hero ─────────────────────────────────────────── */
 .news-hero {
-    padding: 5rem 2rem 4rem;
+    padding: 3rem 2rem 3rem;
     text-align: center;
     background-color: var(--eat-surface-container);
+    border-bottom: 1px solid var(--eat-outline-variant);
 }
 .news-hero-sub {
     display: flex;
@@ -179,7 +180,7 @@ onMounted(fetchNews)
     display: flex;
     flex-direction: column;
     gap: 3rem;
-    max-width: 1280px;
+    max-width: 1440px;
     margin: 0 auto;
     padding: 4rem 2rem 8rem;
 }
@@ -196,14 +197,13 @@ onMounted(fetchNews)
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4rem;
+    gap: 3rem;
 }
 
 /* ── Divider ──────────────────────────────────────── */
 .news-divider {
     display: flex;
     justify-content: center;
-    opacity: 0.3;
 }
 
 /* ── Pagination ───────────────────────────────────── */
@@ -221,6 +221,7 @@ onMounted(fetchNews)
     border: 1px solid var(--eat-outline-variant);
     background: transparent;
     color: var(--eat-secondary);
+    font-size: 1.25rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -240,13 +241,13 @@ onMounted(fetchNews)
     display: flex;
     gap: 1rem;
     font-family: var(--font-label);
-    font-size: 0.82rem;
+    font-size: 1rem;
     letter-spacing: 0.12em;
 }
 .news-page-num {
     cursor: pointer;
     color: var(--eat-on-surface);
-    opacity: 0.35;
+    opacity: 0.4;
     transition: all 0.2s ease;
     padding-bottom: 2px;
 }

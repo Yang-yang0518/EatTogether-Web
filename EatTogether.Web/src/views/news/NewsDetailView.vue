@@ -45,7 +45,7 @@
                 <NewsArticleNav :prevArticle="prevArticle" :nextArticle="nextArticle" />
 
                 <div class="detail-back-wrap">
-                    <RouterLink :to="{ name: 'NewsList' }" class="btn-eat-secondary btn-eat-sm"
+                    <RouterLink :to="{ name: 'NewsList' }" class="btn-eat-secondary btn-eat-md"
                         >回列表頁</RouterLink
                     >
                 </div>
@@ -169,11 +169,11 @@ onMounted(() => {
     justify-content: center;
     gap: 0.5rem;
     font-family: var(--font-label);
-    font-size: 0.7rem;
+    font-size: 0.9rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     color: var(--eat-on-surface-variant);
-    opacity: 0.5;
+    opacity: 0.7;
     flex-wrap: wrap;
 }
 .detail-bc-link {
@@ -197,7 +197,7 @@ onMounted(() => {
 
 /* ── 主體 ─────────────────────────────────────────── */
 .detail-main {
-    max-width: 860px;
+    max-width: 1080px;
     margin: 0 auto;
     padding: 2.5rem 2rem 4rem;
 }
@@ -205,8 +205,8 @@ onMounted(() => {
 /* ── 內文排版 ──────────────────────────────────────── */
 .detail-body {
     font-family: var(--font-body);
-    font-size: 1.1rem;
-    line-height: 2.5;
+    font-size: 1.4rem;
+    line-height: 2.2;
     color: var(--eat-on-surface);
     opacity: 0.85;
 }
@@ -264,7 +264,7 @@ onMounted(() => {
 }
 .detail-tag {
     font-family: var(--font-label);
-    font-size: 0.68rem;
+    font-size: 0.9rem;
     letter-spacing: 0.2em;
     padding: 0.3rem 0.9rem;
     background: var(--eat-surface-high);

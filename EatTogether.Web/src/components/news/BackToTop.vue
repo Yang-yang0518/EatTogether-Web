@@ -1,6 +1,12 @@
 <template>
     <Transition name="fade">
-        <button v-if="showBackTop" class="back-to-top" @click="scrollToTop" aria-label="回到頂部">
+        <button
+            v-if="showBackTop"
+            class="back-to-top"
+            @click="scrollToTop"
+            aria-label="回到頂部"
+            title="回到頂部"
+        >
             ⤒
         </button>
     </Transition>
@@ -12,7 +18,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 const props = defineProps({
     threshold: {
         type: Number,
-        default: 150,
+        default: 100,
     },
 })
 
@@ -35,26 +41,26 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     position: fixed;
     bottom: 2rem;
     right: 2rem;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 3.5rem;
+    height: 3.5rem;
     border-radius: 50%;
-    background: var(--eat-primary);
-    color: var(--eat-on-primary, #fff);
-    border: none;
+    background: transparent;
+    color: var(--eat-secondary);
+    border: 1px solid var(--eat-outline-variant);
     cursor: pointer;
-    font-size: 1.1rem;
+    font-size: 1.8rem;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition:
-        opacity 0.2s,
-        transform 0.2s;
+    transition: var(--eat-transition);
     z-index: 100;
 }
 .back-to-top:hover {
+    background: var(--eat-primary);
+    color: var(--eat-on-primary);
+    border-color: var(--eat-primary);
     transform: translateY(-3px);
-    opacity: 0.85;
 }
 
 /* Transition */

@@ -70,17 +70,17 @@ defineEmits(['select'])
 .news-sidebar-title {
     font-family: var(--font-headline);
     font-style: italic;
-    font-size: 1.8rem;
+    font-size: 1.9rem;
     color: var(--eat-primary);
     margin-bottom: 0;
 }
 .news-sidebar-sub {
     font-family: var(--font-label);
-    font-size: 0.62rem;
+    font-size: 0.9rem;
     letter-spacing: 0.35em;
     text-transform: uppercase;
     color: var(--eat-on-surface-variant);
-    opacity: 0.4;
+    opacity: 0.7;
     margin-top: 0.3rem;
 }
 
@@ -144,9 +144,9 @@ defineEmits(['select'])
         padding: 0;
         border-radius: 0;
         border: none;
-        font-size: 1rem;
+        font-size: 1.25rem;
         letter-spacing: 0.08em;
-        opacity: 0.4;
+        opacity: 0.7;
     }
     .news-sidebar-link:hover,
     .news-sidebar-link.active {
@@ -167,8 +167,8 @@ defineEmits(['select'])
 .news-sidebar-en {
     font-family: var(--font-headline);
     font-style: italic;
-    font-size: 0.8rem;
-    opacity: 0.8;
+    font-size: 1rem;
+    opacity: 0.7;
     letter-spacing: 0.1em;
     min-width: 3.5rem;
     margin-left: 0.5rem;

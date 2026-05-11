@@ -60,7 +60,7 @@ defineProps({
     gap: 0.75rem;
     text-decoration: none;
     color: var(--eat-on-surface-variant);
-    opacity: 0.5;
+    opacity: 0.7;
     transition: all 0.25s ease;
     max-width: 45%;
 }
@@ -72,7 +72,7 @@ defineProps({
     justify-content: flex-end;
 }
 .detail-nav-arrow {
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     flex-shrink: 0;
     color: var(--eat-secondary);
 }
@@ -87,15 +87,15 @@ defineProps({
 
 .detail-nav-label {
     font-family: var(--font-label);
-    font-size: 0.62rem;
+    font-size: 0.9rem;
     letter-spacing: 0.25em;
     text-transform: uppercase;
-    opacity: 0.6;
+    opacity: 0.7;
 }
 .detail-nav-ttl {
     font-family: var(--font-headline);
     font-style: italic;
-    font-size: 0.9rem;
+    font-size: 1.25rem;
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
