@@ -109,6 +109,16 @@ namespace EatTogether.Models.Services
             return await ClaimCouponAsync(coupon.Id, memberId);
         }
 
+        // ─── 即將上線的優惠券（公開）────────────────────────────────
+        public async Task<List<CouponDto>> GetUpcomingCouponsAsync()
+        {
+            var all = await _couponRepo.GetAllAsync();
+            return all
+                .Where(c => !c.IsDisabled && c.IsUpcoming)
+                .OrderBy(c => c.StartDate)
+                .ToList();
+        }
+
         // ─── 我的優惠券 ──────────────────────────────────────────────
         public async Task<IEnumerable<MemberCouponDto>> GetMyCouponsAsync(int memberId)
         {
