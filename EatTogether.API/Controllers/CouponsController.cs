@@ -44,6 +44,15 @@ namespace EatTogether.API.Controllers
             return Ok(coupons);
         }
 
+        // GET api/Coupons/Upcoming
+        [HttpGet("Upcoming")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUpcoming()
+        {
+            var coupons = await _service.GetUpcomingCouponsAsync();
+            return Ok(coupons);
+        }
+
         // POST api/Coupons/{id}/Claim  [需登入]
         [HttpPost("{id:int}/Claim")]
         [Authorize]
