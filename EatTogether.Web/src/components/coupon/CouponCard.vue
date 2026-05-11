@@ -3,8 +3,15 @@
 
     <!-- 左側主視覺 -->
     <div class="coupon-left">
+      <!-- 類型標籤 -->
+      <div class="type-tag">
+        <i :class="coupon.discountType === 0 ? 'bi bi-cash' : 'bi bi-percent'" class="me-1"></i>
+        {{ coupon.discountType === 0 ? '折金額' : '折百分比' }}
+      </div>
+      <!-- 折扣值 -->
       <div class="discount-value">{{ coupon.discountDescription }}</div>
-      <div v-if="coupon.minSpend > 0" class="min-spend">滿 ${{ coupon.minSpend }}</div>
+      <div v-if="coupon.minSpend > 0" class="min-spend">消費滿 ${{ coupon.minSpend }}</div>
+      <!-- 序號 -->
       <div class="coupon-code-badge">{{ coupon.code }}</div>
     </div>
 
@@ -20,30 +27,31 @@
       <div class="coupon-name">{{ coupon.name }}</div>
 
       <div class="coupon-meta">
-        <span v-if="coupon.endDate" :class="{ 'expiry-warn': isExpiringSoon(coupon.endDate) }">
+        <span v-if="coupon.endDate" :class="{ 'expiry-warn': isExpiringSoon(coupon.endDate) }" class="meta-item">
           <i class="bi bi-clock me-1"></i>{{ formatExpire(coupon.endDate) }}
         </span>
-        <span v-if="coupon.limitCount" class="remain">
+        <span v-if="coupon.limitCount" class="meta-item remain">
           <i class="bi bi-people me-1"></i>剩 {{ coupon.limitCount - coupon.receivedCount }} 張
         </span>
       </div>
 
-      <button
-        class="claim-btn"
-        :class="{
-          'claim-btn--done': coupon.isClaimed,
-          'claim-btn--loading': claiming
-        }"
-        :disabled="coupon.isClaimed || claiming"
-        @click="handleClaim"
-      >
-        <span v-if="claiming" class="spinner-border spinner-border-sm me-1" style="width:.85rem;height:.85rem;border-width:2px"></span>
-        <i v-else-if="coupon.isClaimed" class="bi bi-check-circle me-1"></i>
-        <i v-else class="bi bi-bag-plus me-1"></i>
-        <template v-if="coupon.isClaimed">已領取</template>
-        <template v-else-if="!claiming && isLoggedIn">立即領取</template>
-        <template v-else-if="!claiming">登入後領取</template>
-      </button>
+      <!-- 底部：已領取標記 or 領取按鈕 -->
+      <div class="card-footer">
+        <span v-if="coupon.isClaimed" class="claimed-badge">
+          <i class="bi bi-check-circle-fill me-1"></i>已領取
+        </span>
+        <button
+          v-else
+          class="claim-btn"
+          :class="{ 'claim-btn--loading': claiming }"
+          :disabled="claiming"
+          @click="handleClaim"
+        >
+          <span v-if="claiming" class="spinner-border spinner-border-sm me-1" style="width:.8rem;height:.8rem;border-width:2px"></span>
+          <i v-else class="bi bi-bag-plus me-1"></i>
+          <span>{{ isLoggedIn ? '立即領取' : '登入後領取' }}</span>
+        </button>
+      </div>
     </div>
 
   </div>
@@ -67,7 +75,6 @@ const claiming   = ref(false)
 
 async function handleClaim() {
   if (!isLoggedIn.value) {
-    // 未登入：開啟登入 Modal，登入後由 CouponListView 重新抓券
     const modalEl = document.querySelector('#authModal')
     if (modalEl) {
       const { Modal } = await import('bootstrap')
@@ -114,7 +121,7 @@ function formatExpire(dt) {
   border: 1px solid var(--eat-outline-variant);
   border-radius: var(--eat-radius-lg);
   overflow: hidden;
-  transition: transform .2s ease, box-shadow .2s ease, border-color .2s;
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s;
   position: relative;
 }
 .coupon-card::before {
@@ -122,80 +129,85 @@ function formatExpire(dt) {
   position: absolute;
   inset: 0;
   border-radius: var(--eat-radius-lg);
-  background: linear-gradient(135deg, rgba(227,199,107,.04) 0%, transparent 60%);
+  background: linear-gradient(135deg, rgba(227,199,107,.05) 0%, transparent 55%);
   pointer-events: none;
 }
-.coupon-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(0,0,0,.45), 0 0 0 1px rgba(227,199,107,.2);
-  border-color: rgba(227,199,107,.35);
+.coupon-card:not(.claimed):hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0,0,0,.5), 0 0 0 1px rgba(227,199,107,.25);
+  border-color: rgba(227,199,107,.4);
 }
 .coupon-card.claimed {
-  opacity: .5;
-  filter: grayscale(.3);
-}
-.coupon-card.claimed:hover {
-  transform: none;
-  box-shadow: none;
+  opacity: .45;
+  filter: grayscale(.4);
 }
 
 /* ── 左側色塊 ─────────────────────────────────────── */
 .coupon-left {
-  width: 130px;
+  width: 140px;
   flex-shrink: 0;
-  background: linear-gradient(150deg, #3d1a08 0%, #2b1c16 50%, #1e100b 100%);
-  border-right: none;
+  background: linear-gradient(160deg, #3d1a08 0%, #261510 55%, #1a0d07 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 1.25rem 0.75rem;
+  gap: 7px;
+  padding: 1.4rem 0.8rem;
   text-align: center;
   position: relative;
 }
+/* 光暈效果 */
 .coupon-left::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, rgba(227,199,107,.12) 0%, transparent 65%);
+  background: radial-gradient(ellipse at 50% 35%, rgba(227,199,107,.15) 0%, transparent 68%);
   pointer-events: none;
 }
 
+.type-tag {
+  font-family: var(--font-label);
+  font-size: .58rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(227,199,107,.55);
+  background: rgba(227,199,107,.08);
+  border: 1px solid rgba(227,199,107,.18);
+  border-radius: 2px;
+  padding: .12rem .5rem;
+  position: relative;
+  z-index: 1;
+}
 .discount-value {
   font-family: var(--font-headline);
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--eat-primary);
-  line-height: 1.2;
+  line-height: 1.15;
   position: relative;
   z-index: 1;
 }
 .min-spend {
   font-family: var(--font-label);
-  font-size: .65rem;
-  letter-spacing: .08em;
+  font-size: .62rem;
+  letter-spacing: .06em;
   color: var(--eat-on-surface-variant);
   position: relative;
   z-index: 1;
 }
 .coupon-code-badge {
-  margin-top: 4px;
   font-family: var(--font-label);
-  font-size: .6rem;
-  letter-spacing: .12em;
-  color: rgba(227,199,107,.5);
-  background: rgba(227,199,107,.06);
-  border: 1px solid rgba(227,199,107,.15);
-  border-radius: 2px;
-  padding: .15rem .45rem;
+  font-size: .58rem;
+  letter-spacing: .14em;
+  color: rgba(227,199,107,.45);
   position: relative;
   z-index: 1;
+  margin-top: 2px;
 }
 
 /* ── 鋸齒分隔 ─────────────────────────────────────── */
 .perforation {
-  width: 18px;
+  width: 16px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -204,19 +216,19 @@ function formatExpire(dt) {
   position: relative;
 }
 .notch {
-  width: 18px;
-  height: 9px;
-  background: var(--eat-surface);
+  width: 16px;
+  height: 8px;
+  background: var(--eat-bg);
   flex-shrink: 0;
 }
 .notch.top {
-  border-radius: 0 0 9px 9px;
+  border-radius: 0 0 8px 8px;
   border-bottom: 1px solid var(--eat-outline-variant);
   border-left: 1px solid var(--eat-outline-variant);
   border-right: 1px solid var(--eat-outline-variant);
 }
 .notch.bottom {
-  border-radius: 9px 9px 0 0;
+  border-radius: 8px 8px 0 0;
   border-top: 1px solid var(--eat-outline-variant);
   border-left: 1px solid var(--eat-outline-variant);
   border-right: 1px solid var(--eat-outline-variant);
@@ -237,33 +249,56 @@ function formatExpire(dt) {
 /* ── 右側資訊 ─────────────────────────────────────── */
 .coupon-right {
   flex: 1;
-  padding: 1.1rem 1.25rem;
+  padding: 1.2rem 1.4rem;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 110px;
 }
 .coupon-name {
   font-family: var(--font-headline);
-  font-size: .95rem;
+  font-size: 1rem;
   color: var(--eat-on-surface);
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 .coupon-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  font-size: .75rem;
+}
+.meta-item {
+  display: flex;
+  align-items: center;
+  font-size: .73rem;
   color: var(--eat-on-surface-variant);
 }
 .expiry-warn { color: #e09a50; }
 .remain { color: var(--eat-secondary); }
 
-/* ── 領取按鈕 ─────────────────────────────────────── */
+/* ── 底部 ─────────────────────────────────────────── */
+.card-footer {
+  display: flex;
+  align-items: center;
+}
+
+/* 已領取標記 */
+.claimed-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-label);
+  font-size: .75rem;
+  letter-spacing: .08em;
+  color: var(--eat-on-surface-variant);
+  opacity: .6;
+}
+
+/* 領取按鈕 */
 .claim-btn {
-  align-self: flex-start;
-  padding: .4rem 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  padding: .42rem 1.2rem;
   border-radius: var(--eat-radius-sm);
   font-family: var(--font-label);
   font-size: .78rem;
@@ -273,18 +308,11 @@ function formatExpire(dt) {
   color: var(--eat-primary);
   background: transparent;
   transition: all .2s;
-  display: flex;
-  align-items: center;
 }
 .claim-btn:hover:not(:disabled) {
   background: var(--eat-primary);
   color: var(--eat-on-primary);
-  box-shadow: 0 4px 16px rgba(227,199,107,.3);
+  box-shadow: 0 4px 18px rgba(227,199,107,.28);
 }
-.claim-btn--done {
-  border-color: var(--eat-outline-variant);
-  color: var(--eat-on-surface-variant);
-  cursor: default;
-}
-.claim-btn:disabled { cursor: not-allowed; }
+.claim-btn:disabled { cursor: not-allowed; opacity: .7; }
 </style>

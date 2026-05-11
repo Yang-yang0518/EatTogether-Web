@@ -22,29 +22,37 @@
       </div>
     </header>
 
-    <div class="container pb-5">
+    <!-- 主體 -->
+    <div class="coupon-body">
 
-      <!-- 篩選列 -->
-      <div class="filter-section">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <button
-            v-for="f in filters"
-            :key="f.key"
-            class="chip-eat"
-            :class="{ active: activeFilter === f.key }"
-            @click="activeFilter = f.key"
-          >
-            <i :class="f.icon" class="me-1"></i>{{ f.label }}
-          </button>
+      <!-- 工具列 -->
+      <div class="coupon-toolbar">
+        <div class="toolbar-left">
+          <i class="bi bi-ticket-perforated toolbar-icon"></i>
+          <span class="toolbar-title">優惠精選</span>
+          <span v-if="!loading" class="toolbar-count">{{ filteredCoupons.length }} 張</span>
         </div>
-
-        <label class="birthday-toggle">
-          <input type="checkbox" v-model="birthdayOnly" />
-          <span class="toggle-track">
-            <span class="toggle-thumb"></span>
-          </span>
-          <span>🎂 生日專屬</span>
-        </label>
+        <div class="toolbar-right">
+          <div class="chip-group">
+            <button
+              v-for="f in filters"
+              :key="f.key"
+              class="chip-btn"
+              :class="{ active: activeFilter === f.key }"
+              @click="activeFilter = f.key"
+            >
+              <i :class="f.icon" class="me-1"></i>{{ f.label }}
+            </button>
+          </div>
+          <div class="toolbar-divider"></div>
+          <label class="birthday-toggle">
+            <input type="checkbox" v-model="birthdayOnly" />
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span>🎂 生日專屬</span>
+          </label>
+        </div>
       </div>
 
       <!-- 載入中 -->
@@ -55,7 +63,8 @@
       <!-- 空狀態 -->
       <div v-else-if="!filteredCoupons.length" class="empty-state">
         <i class="bi bi-ticket-perforated empty-icon"></i>
-        <p class="eat-body-muted mb-0">目前沒有符合條件的優惠券</p>
+        <p class="empty-text">目前沒有符合條件的優惠券</p>
+        <p class="empty-sub">試試切換其他篩選條件</p>
       </div>
 
       <!-- 卡片格 -->
@@ -83,7 +92,7 @@ import { useAuthStore } from '@/stores/auth.js'
 
 const authStore        = useAuthStore()
 const router           = useRouter()
-const pendingMyCoupons = ref(false)   // 未登入點「我的優惠券」時記錄意圖
+const pendingMyCoupons = ref(false)
 
 async function goToMyCoupons() {
   if (!authStore.isLoggedIn) {
@@ -98,7 +107,6 @@ async function goToMyCoupons() {
   router.push({ name: 'MyCoupons' })
 }
 
-// 登入後：重新抓券；若有待跳轉意圖則導至我的優惠券
 watch(() => authStore.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
     fetchCoupons()
@@ -109,10 +117,11 @@ watch(() => authStore.isLoggedIn, (loggedIn) => {
     }
   }
 })
-const coupons      = ref([])
-const loading      = ref(true)
-const activeFilter = ref('all')
-const birthdayOnly = ref(false)
+
+const coupons       = ref([])
+const loading       = ref(true)
+const activeFilter  = ref('all')
+const birthdayOnly  = ref(false)
 const myUsableCount = ref(0)
 
 const filters = [
@@ -177,7 +186,6 @@ onMounted(() => {
   text-align: center;
   background-color: var(--eat-surface-container);
   border-bottom: 1px solid var(--eat-outline-variant);
-  margin-bottom: 2.5rem;
 }
 .hero-sub {
   display: flex;
@@ -192,7 +200,6 @@ onMounted(() => {
   background: var(--eat-secondary);
   opacity: 0.3;
 }
-
 .hero-count {
   background: rgba(227,199,107,.2);
   color: var(--eat-primary);
@@ -202,58 +209,140 @@ onMounted(() => {
   border: 1px solid rgba(227,199,107,.3);
 }
 
-/* ── 篩選 ──────────────────────────────────────────── */
-.filter-section {
+/* ── 主體 ─────────────────────────────────────────── */
+.coupon-body {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 3rem 2rem 6rem;
+}
+
+/* ── 工具列 ──────────────────────────────────────── */
+.coupon-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
+  padding: 1rem 1.5rem;
+  background: var(--eat-surface-container);
+  border: 1px solid var(--eat-outline-variant);
+  border-radius: var(--eat-radius-lg);
   margin-bottom: 2rem;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.toolbar-icon {
+  color: var(--eat-secondary);
+  font-size: 1rem;
+}
+.toolbar-title {
+  font-family: var(--font-headline);
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--eat-on-surface);
+  letter-spacing: .04em;
+}
+.toolbar-count {
+  font-family: var(--font-label);
+  font-size: .72rem;
+  letter-spacing: .1em;
+  color: var(--eat-primary);
+  background: rgba(227,199,107,.12);
+  border: 1px solid rgba(227,199,107,.25);
+  border-radius: 50px;
+  padding: .15rem .65rem;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chip-group {
+  display: flex;
+  gap: 6px;
+}
+.chip-btn {
+  display: flex;
+  align-items: center;
+  padding: .35rem .9rem;
+  border-radius: 50px;
+  border: 1px solid var(--eat-outline-variant);
+  background: transparent;
+  color: var(--eat-on-surface-variant);
+  font-family: var(--font-label);
+  font-size: .78rem;
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: all .2s;
+}
+.chip-btn:hover {
+  border-color: rgba(227,199,107,.4);
+  color: var(--eat-on-surface);
+}
+.chip-btn.active {
+  background: rgba(227,199,107,.15);
+  border-color: var(--eat-primary);
+  color: var(--eat-primary);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--eat-outline-variant);
+  opacity: .6;
 }
 
 /* 自訂 toggle switch */
 .birthday-toggle {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   font-family: var(--font-label);
-  font-size: .82rem;
-  letter-spacing: .08em;
+  font-size: .78rem;
+  letter-spacing: .06em;
   color: var(--eat-on-surface-variant);
+  user-select: none;
 }
 .birthday-toggle input { display: none; }
 .toggle-track {
-  width: 38px; height: 20px;
+  width: 36px; height: 19px;
   background: var(--eat-surface-high);
   border: 1px solid var(--eat-outline-variant);
   border-radius: 50px;
   position: relative;
   transition: background .25s;
+  flex-shrink: 0;
 }
 .toggle-thumb {
   position: absolute;
   top: 2px; left: 2px;
-  width: 14px; height: 14px;
+  width: 13px; height: 13px;
   border-radius: 50%;
   background: var(--eat-outline);
   transition: all .25s;
 }
 .birthday-toggle input:checked ~ .toggle-track {
-  background: rgba(227,199,107,.25);
+  background: rgba(227,199,107,.2);
   border-color: var(--eat-primary);
 }
 .birthday-toggle input:checked ~ .toggle-track .toggle-thumb {
-  transform: translateX(18px);
+  transform: translateX(17px);
   background: var(--eat-primary);
 }
 
 /* ── 卡片格 ─────────────────────────────────────────── */
 .coupon-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 18px;
 }
 
 /* ── 空狀態 ──────────────────────────────────────────── */
@@ -261,12 +350,37 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 5rem 0;
-  color: var(--eat-on-surface-variant);
+  gap: 10px;
+  padding: 6rem 0;
+  text-align: center;
 }
 .empty-icon {
-  font-size: 3rem;
-  opacity: .35;
+  font-size: 2.8rem;
+  color: var(--eat-secondary);
+  opacity: .25;
+  margin-bottom: .5rem;
+}
+.empty-text {
+  font-family: var(--font-headline);
+  font-size: .95rem;
+  color: var(--eat-on-surface);
+  opacity: .5;
+  margin: 0;
+}
+.empty-sub {
+  font-family: var(--font-body);
+  font-size: .8rem;
+  color: var(--eat-on-surface-variant);
+  opacity: .4;
+  font-style: italic;
+  margin: 0;
+}
+
+/* ── RWD ──────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .coupon-body { padding: 2rem 1.25rem 4rem; }
+  .coupon-toolbar { flex-direction: column; align-items: flex-start; }
+  .toolbar-right { width: 100%; justify-content: space-between; }
+  .coupon-grid { grid-template-columns: 1fr; }
 }
 </style>
