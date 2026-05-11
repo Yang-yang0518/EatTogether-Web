@@ -38,6 +38,7 @@
             <RouterLink :to="{ name: 'NewsDetail', params: { id: article.id } }">
                 <h3 class="eat-h3 news-card-title">{{ article.title }}</h3>
             </RouterLink>
+            <!-- eslint-disable-next-line vue/no-v-html -->
             <p class="eat-body news-card-summary" v-html="article.summary"></p>
             <div class="news-card-meta">
                 <i class="bi bi-eye"></i>
@@ -110,7 +111,7 @@ function formatDateBg(dateStr) {
 }
 @media (min-width: 768px) {
     .news-card-img-wrap {
-        width: 45%;
+        width: 40%;
     }
 }
 
@@ -177,7 +178,7 @@ function formatDateBg(dateStr) {
     font-size: 2rem;
     font-style: italic;
     color: var(--eat-on-surface);
-    opacity: 0.25;
+    opacity: 0.4;
     pointer-events: none;
     user-select: none;
 }
@@ -190,13 +191,14 @@ function formatDateBg(dateStr) {
 .news-card-category {
     display: block;
     font-family: var(--font-label);
-    font-size: 0.68rem;
-    letter-spacing: 0.4em;
+    font-size: 1rem;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--eat-secondary);
     margin-bottom: 1rem;
 }
 .news-card-title {
+    font-size: 1.9rem;
     line-height: 1.35;
     margin-bottom: 1.25rem;
     text-align: left;
@@ -214,6 +216,7 @@ a:hover .news-card-title {
 .news-card-summary {
     opacity: 0.75;
     font-style: italic;
+    font-size: 1.1rem;
     margin-bottom: 1.25rem;
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -229,9 +232,9 @@ a:hover .news-card-title {
     align-items: center;
     gap: 0.3rem;
     font-family: var(--font-label);
-    font-size: 0.72rem;
+    font-size: 0.9rem;
     color: var(--eat-on-surface-variant);
-    opacity: 0.45;
+    opacity: 0.7;
     margin-bottom: 1.75rem;
 }
 .news-card-body--right .news-card-meta {
@@ -244,7 +247,7 @@ a:hover .news-card-title {
     align-items: center;
     gap: 0.5rem;
     font-family: var(--font-label);
-    font-size: 0.68rem;
+    font-size: 0.9rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--eat-primary);
