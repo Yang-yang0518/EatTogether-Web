@@ -38,7 +38,7 @@
             <RouterLink :to="{ name: 'NewsDetail', params: { id: article.id } }">
                 <h3 class="eat-h3 news-card-title">{{ article.title }}</h3>
             </RouterLink>
-            <p class="eat-body news-card-summary">{{ stripTags(article.summary) }}</p>
+            <p class="eat-body news-card-summary" v-html="article.summary"></p>
             <div class="news-card-meta">
                 <i class="bi bi-eye"></i>
                 <span>{{ article.viewCount }}</span>
@@ -71,12 +71,6 @@ defineProps({
         required: true,
     },
 })
-
-// ── 工具函式
-function stripTags(html) {
-    if (!html) return ''
-    return html.replace(/<[^>]*>/g, '')
-}
 
 function formatDateBg(dateStr) {
     if (!dateStr) return ''
