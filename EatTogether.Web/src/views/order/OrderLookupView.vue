@@ -186,8 +186,16 @@
                             class="ol-progress-done-single"
                         >
                             <div class="ol-done-single-badge">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                                    />
                                 </svg>
                                 <span class="font-label">餐點已完成</span>
                             </div>
@@ -199,8 +207,16 @@
                             class="ol-progress-done-single"
                         >
                             <div class="ol-done-single-badge ol-done-paid-badge">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                                    />
                                 </svg>
                                 <span class="font-label">已結帳完成</span>
                             </div>
@@ -448,14 +464,29 @@
                                     </a>
                                 </div>
 
-                                <!-- 一般：餐廳聯絡資訊 -->
-                                <section v-else class="ol-contact-section">
-                                    <h3 class="font-label ol-section-title">餐廳聯絡資訊</h3>
-                                    <p class="font-body ol-store-addr">台北市大安區慢食街 88 號</p>
-                                    <a href="tel:0223456789" class="font-body ol-store-tel"
-                                        >Tel: (02) 2345-6789</a
+                                <!-- 修改取餐資訊按鈕（靠底部） -->
+                                <div
+                                    v-if="selectedOrder.orderStatus !== 2"
+                                    class="ol-edit-pickup-wrap"
+                                >
+                                    <button
+                                        class="ol-edit-pickup-btn font-label"
+                                        @click="showEditModal = true"
                                     >
-                                </section>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="14"
+                                            height="14"
+                                            fill="currentColor"
+                                            viewBox="0 0 16 16"
+                                        >
+                                            <path
+                                                d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"
+                                            />
+                                        </svg>
+                                        修改取餐資訊
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </template>
@@ -463,6 +494,14 @@
             </div>
         </div>
     </div>
+
+    <EditPickupModal
+        :visible="showEditModal"
+        :order="selectedOrder"
+        :isSaving="editSaving"
+        @close="showEditModal = false"
+        @saved="handlePickupSaved"
+    />
 
     <!-- ══ 餐點已完成 Modal ══ -->
     <Teleport to="body">
@@ -480,6 +519,7 @@
 </template>
 
 <script setup>
+import EditPickupModal from '@/components/order/EditPickupModal.vue'
 import { ref, computed, watch, onUnmounted } from 'vue'
 import apiFetch from '@/utils/apiFetch'
 
@@ -563,8 +603,14 @@ function startLookupPolling(orderNum) {
     stopLookupPolling()
     _pollTimer = setInterval(async () => {
         const cur = selectedOrder.value
-        if (!cur || cur.orderNumber !== orderNum) { stopLookupPolling(); return }
-        if (cur.orderStatus === 2 || cur.orderStatus === 3) { stopLookupPolling(); return }
+        if (!cur || cur.orderNumber !== orderNum) {
+            stopLookupPolling()
+            return
+        }
+        if (cur.orderStatus === 2 || cur.orderStatus === 3) {
+            stopLookupPolling()
+            return
+        }
         try {
             const res = await apiFetch(
                 `/Orders/TakeoutStatus?orderNumber=${encodeURIComponent(orderNum)}`
@@ -615,6 +661,43 @@ watch(selectedOrder, (order) => {
 onUnmounted(() => {
     stopLookupPolling()
 })
+
+const showEditModal = ref(false)
+const editSaving    = ref(false)
+
+async function handlePickupSaved(data) {
+    editSaving.value = true
+    try {
+        const res = await apiFetch('/Orders/UpdatePickupInfo', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        })
+        if (!res.ok) throw new Error()
+        // 同步更新畫面
+        selectedOrder.value = {
+            ...selectedOrder.value,
+            pickupTime:    data.pickupTime,
+            customerName:  data.customerName,
+            customerPhone: data.customerPhone,
+        }
+        // 同步更新 results 列表中對應的訂單
+        const idx = results.value.findIndex((r) => r.orderNumber === data.orderNumber)
+        if (idx >= 0) {
+            results.value[idx] = {
+                ...results.value[idx],
+                pickupTime:    data.pickupTime,
+                customerName:  data.customerName,
+                customerPhone: data.customerPhone,
+            }
+        }
+        showEditModal.value = false
+    } catch {
+        alert('儲存失敗，請稍後再試')
+    } finally {
+        editSaving.value = false
+    }
+}
 </script>
 
 <style scoped>
@@ -1007,7 +1090,7 @@ onUnmounted(() => {
 .ol-detail-cols {
     display: flex;
     gap: 1.25rem;
-    align-items: flex-start;
+    align-items: stretch;
 }
 .ol-detail-left {
     flex: 1;
@@ -1213,8 +1296,8 @@ onUnmounted(() => {
 .ol-items-detail {
     display: flex;
     flex-direction: column;
-    flex: 1;        /* 撐滿剩餘空間 */
-    min-height: 0;  /* flex 子元素縮小必要條件 */
+    flex: 1; /* 撐滿剩餘空間 */
+    min-height: 0; /* flex 子元素縮小必要條件 */
     overflow-y: auto;
     /* 捲軸樣式（可選） */
     scrollbar-width: thin;
@@ -1566,12 +1649,47 @@ onUnmounted(() => {
 }
 /* 已結帳：改綠色 */
 .ol-done-paid-badge {
-    background: linear-gradient(135deg, rgba(126,200,126,0.15), rgba(100,170,100,0.1));
+    background: linear-gradient(135deg, rgba(126, 200, 126, 0.15), rgba(100, 170, 100, 0.1));
     border-color: rgba(126, 200, 126, 0.45);
     color: #7ec87e;
 }
 .ol-done-paid-badge svg {
     color: #7ec87e;
+}
+
+/* ── 修改取餐資訊按鈕 ── */
+.ol-edit-pickup-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: auto;
+    padding-top: 1rem;
+}
+.ol-edit-pickup-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.4rem;
+    background: transparent;
+    border: 1.5px solid rgba(227, 199, 107, 0.45);
+    border-radius: 0.4rem;
+    color: #e3c76b;
+    font-size: 0.92rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        border-color 0.2s,
+        filter 0.2s;
+    width: 100%;
+    justify-content: center;
+}
+.ol-edit-pickup-btn:hover {
+    background: rgba(227, 199, 107, 0.1);
+    border-color: rgba(227, 199, 107, 0.75);
+    filter: brightness(1.1);
+}
+.ol-edit-pickup-btn svg {
+    flex-shrink: 0;
 }
 
 /* ── 取消卡片（取代聯絡資訊卡片） ── */

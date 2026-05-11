@@ -1440,16 +1440,17 @@
                         </div>
                     </div>
 
-                    <!-- 聯絡資訊 -->
-                    <section class="sp-section">
-                        <h3 class="font-label sp-section-title">餐廳聯絡資訊</h3>
-                        <div class="sp-store-info">
-                            <p class="font-body sp-store-addr">台北市大安區慢食街 88 號</p>
-                            <a href="tel:0223456789" class="font-body sp-store-tel"
-                                >Tel: (02) 2345-6789</a
-                            >
-                        </div>
-                    </section>
+                    <!-- 修改取餐資料 -->
+                    <button
+                        v-if="orderProgress < 3"
+                        class="sp-edit-pickup-btn font-label"
+                        @click="showEditModal = true"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+                        </svg>
+                        修改取餐資料
+                    </button>
 
                     <!-- 返回菜單 -->
                     <button @click="onSuccessClose" class="sp-back-btn font-label">返回菜單</button>
@@ -1472,6 +1473,15 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- ══ 修改取餐資料 Modal ══ -->
+        <EditPickupModal
+            :visible="showEditModal"
+            :order="editPickupOrder"
+            :isSaving="editSaving"
+            @close="showEditModal = false"
+            @saved="handlePickupSaved"
+        />
 
         <!-- ══ Detail Modal ══ -->
         <DishDetailModal
@@ -1665,6 +1675,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import apiFetch from '@/utils/apiFetch'
 import DishDetailModal from '@/components/Order/DishDetailModal.vue'
 import SetMealSelectModal from '@/components/Order/SetMealSelectModal.vue'
+import EditPickupModal from '@/components/order/EditPickupModal.vue'
 
 const store = useOrderStore()
 const authStore = useAuthStore()
@@ -1813,6 +1824,40 @@ const editingMealLineId = ref(null)
 const successModalOpen = ref(false)
 const orderNumber = ref('')
 const submitting = ref(false)
+
+// ── 修改取餐資料 Modal ────────────────────────────────
+const showEditModal  = ref(false)
+const editSaving     = ref(false)
+const editPickupOrder = computed(() => ({
+    orderNumber:   orderNumber.value,
+    pickupTime:    confirmedPickupTime.value,
+    customerName:  confirmedName.value,
+    customerPhone: confirmedPhone.value,
+    note:          '',  // 成功頁不需解析備註
+}))
+
+async function handlePickupSaved(data) {
+    editSaving.value = true
+    try {
+        const res = await apiFetch('/Orders/UpdatePickupInfo', {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(data),
+        })
+        if (!res.ok) throw new Error()
+        // 同步更新畫面顯示
+        confirmedPickupTime.value    = data.pickupTime
+        confirmedName.value          = data.customerName
+        confirmedPhone.value         = data.customerPhone
+        confirmedNeedUtensils.value  = data.utensils
+        saveSuccessToStorage()          // 同步寫回 localStorage
+        showEditModal.value = false
+    } catch {
+        alert('儲存失敗，請稍後再試')
+    } finally {
+        editSaving.value = false
+    }
+}
 const demoMealInitialSel = ref({})
 
 // ── 優惠券 ──────────────────────────────────────────
@@ -4114,6 +4159,29 @@ onMounted(async () => {
 .sp-reminder-icon {
     flex-shrink: 0;
     font-size: 1rem;
+}
+
+/* 修改取餐資料按鈕 */
+.sp-edit-pickup-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.8rem;
+    background: transparent;
+    border: 1.5px solid rgba(227, 199, 107, 0.45);
+    border-radius: 0.4rem;
+    color: #e3c76b;
+    font-size: 0.92rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, filter 0.2s;
+}
+.sp-edit-pickup-btn:hover {
+    background: rgba(227, 199, 107, 0.1);
+    border-color: rgba(227, 199, 107, 0.75);
+    filter: brightness(1.1);
 }
 
 /* 返回菜單按鈕 */

@@ -77,6 +77,9 @@ namespace EatTogether.Models.Services
 
 		// ── 前台會員中心訂單紀錄頁專用 ────────────────
 		Task<MemberOrderPagedResultDto> GetPagedOrdersAsync(int memberId, int page, int pageSize, DateTime? dateFrom, DateTime? dateTo);
+
+        // ── 前台修改取餐資訊 ──────────────────────────
+        Task<bool> UpdatePickupInfoAsync(UpdatePickupInfoDto dto);
 	}
 
     public class OrderService : IOrderService
@@ -1932,5 +1935,50 @@ namespace EatTogether.Models.Services
 				TotalPages = totalPages,
 			};
 		}
+
+        // ── 前台修改取餐資訊 ──────────────────────────────────────────────
+        public async Task<bool> UpdatePickupInfoAsync(UpdatePickupInfoDto dto)
+        {
+            var order = await _preOrderRepo.GetTodayTakeoutByOrderNumberAsync(dto.OrderNumber);
+            if (order == null) return false;
+
+            // 已取消或已結帳不允許修改
+            var status = PreOrderRepository.ComputeTakeoutStatus(order.DoneOrCancel, order.PreOrderDetails);
+            if (status == 2 || status == 3) return false;
+
+            // 解析現有備註，保留 items 與 order 中的特殊備註欄位
+            var noteDto = OrderNoteHelper.Parse(order.Note);
+
+            // 從舊的 order 文字提取顧客自填備註（「備註：xxx」那一行）
+            string? specialNote = null;
+            if (!string.IsNullOrEmpty(noteDto.Order))
+            {
+                var m = Regex.Match(noteDto.Order, @"備註[：:]\s*(.+)");
+                if (m.Success) specialNote = m.Groups[1].Value.Trim();
+            }
+
+            // 重建純文字 note（後台讀取格式）
+            var lines = new List<string>
+            {
+                $"取餐時間：{dto.PickupTime}",
+                $"取餐人：{dto.CustomerName}",
+                $"電話：{dto.CustomerPhone}",
+                $"餐具：{(dto.Utensils ? "需要" : "不需要")}",
+            };
+            if (!string.IsNullOrEmpty(specialNote))
+                lines.Add($"備註：{specialNote}");
+
+            // 重建 JSON Note（保留現有 items 備註）
+            order.Note = OrderNoteHelper.Build(
+                orderNote:    string.Join("\n", lines),
+                itemNotes:    noteDto.Items.Count > 0 ? noteDto.Items : null,
+                customerName:  dto.CustomerName,
+                customerPhone: dto.CustomerPhone,
+                pickupTime:    dto.PickupTime
+            );
+
+            await _preOrderRepo.SaveChangesAsync();
+            return true;
+        }
 	}
 }
