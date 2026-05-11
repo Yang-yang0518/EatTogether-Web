@@ -2,23 +2,22 @@
   <div class="booking-page">
 
     <!-- ── Hero ── -->
-    <div class="booking-hero">
-      <div class="hero-glow"></div>
-      <div class="container position-relative">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-          <div>
-            <p class="eat-label mb-2" style="color:var(--eat-secondary)">
-              <i class="bi bi-calendar-check me-2"></i>ONLINE RESERVATION
-            </p>
-            <h1 class="eat-h1 fst-normal mb-2">線上訂位</h1>
-            <p class="eat-body-muted mb-0">即時確認桌位，輕鬆安排您的義式饗宴</p>
-          </div>
-          <router-link to="/reservation/query" class="query-link">
-            <i class="bi bi-search me-2"></i>查詢 / 取消訂位
-          </router-link>
-        </div>
+    <header class="booking-hero">
+      <p class="eat-label mb-2" style="color:var(--eat-secondary)">
+        <i class="bi bi-calendar-check me-2"></i>ONLINE RESERVATION
+      </p>
+      <h1 class="eat-h1 fst-normal mb-3 eat-display">線上訂位</h1>
+      <div class="hero-sub">
+        <div class="hero-line"></div>
+        <span class="eat-body-muted">即時確認桌位，輕鬆安排您的義式饗宴</span>
+        <div class="hero-line"></div>
       </div>
-    </div>
+      <div class="mt-4">
+        <router-link to="/reservation/query" class="query-link">
+          <i class="bi bi-search me-2"></i>查詢 / 取消訂位
+        </router-link>
+      </div>
+    </header>
 
     <div class="container pb-5">
       <div class="form-wrapper">
@@ -430,26 +429,29 @@ onMounted(async () => {
 /* ── 頁面 ── */
 .booking-page {
   min-height: 100vh;
-  padding-top: 80px;
   background: var(--eat-bg);
 }
 
 /* ── Hero ── */
 .booking-hero {
-  position: relative;
-  overflow: hidden;
-  padding: 3.5rem 0 2.5rem;
-  background: linear-gradient(160deg, #1a0a05 0%, #2b1c16 60%, #1e100b 100%);
+  padding: 5rem 2rem 4rem;
+  text-align: center;
+  background-color: var(--eat-surface-container);
   border-bottom: 1px solid var(--eat-outline-variant);
   margin-bottom: 2.5rem;
 }
-.hero-glow {
-  position: absolute;
-  top: -60px; left: 50%;
-  transform: translateX(-50%);
-  width: 600px; height: 300px;
-  background: radial-gradient(ellipse, rgba(227,199,107,.08) 0%, transparent 70%);
-  pointer-events: none;
+.hero-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  opacity: 0.75;
+}
+.hero-line {
+  flex: 0 0 3rem;
+  height: 1px;
+  background: var(--eat-secondary);
+  opacity: 0.3;
 }
 .query-link {
   display: inline-flex;

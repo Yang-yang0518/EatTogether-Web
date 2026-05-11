@@ -2,21 +2,21 @@
   <div class="walkin-page">
 
     <!-- Hero -->
-    <div class="walkin-hero">
-      <div class="hero-glow"></div>
-      <div class="container position-relative">
-        <p class="eat-label mb-2" style="color:var(--eat-secondary)">
-          <i class="bi bi-people me-2"></i>WALK-IN &amp; TABLE STATUS
-        </p>
-        <h1 class="eat-h1 fst-normal mb-2">現場候位</h1>
-        <p class="eat-body-muted mb-0">
-          目前時間：<span style="color:var(--eat-primary);font-weight:600">{{ currentTimeStr }}</span>
-          &ensp;｜&ensp;
+    <header class="walkin-hero">
+      <p class="eat-label mb-2" style="color:var(--eat-secondary)">
+        <i class="bi bi-people me-2"></i>WALK-IN &amp; TABLE STATUS
+      </p>
+      <h1 class="eat-h1 fst-normal mb-3 eat-display">現場候位</h1>
+      <div class="hero-sub">
+        <div class="hero-line"></div>
+        <span class="eat-body-muted">
           等待中：<span style="color:var(--eat-primary);font-weight:600">{{ todayStatus.waitingCount }}</span> 組
-          &ensp;已叫號：<span style="color:var(--eat-secondary);font-weight:600">{{ todayStatus.calledCount }}</span> 組
-        </p>
+          &ensp;｜&ensp;
+          已叫號：<span style="color:var(--eat-secondary);font-weight:600">{{ todayStatus.calledCount }}</span> 組
+        </span>
+        <div class="hero-line"></div>
       </div>
-    </div>
+    </header>
 
     <div class="container pb-5">
 
@@ -542,26 +542,29 @@ function statusIcon(status) {
 /* ── 頁面佈局 ── */
 .walkin-page {
   min-height: 100vh;
-  padding-top: 80px;
   background: var(--eat-bg);
 }
 
 /* ── Hero ── */
 .walkin-hero {
-  position: relative;
-  overflow: hidden;
-  padding: 3.5rem 0 2.5rem;
-  background: linear-gradient(160deg, #1a0a05 0%, #2b1c16 60%, #1e100b 100%);
+  padding: 5rem 2rem 4rem;
+  text-align: center;
+  background-color: var(--eat-surface-container);
   border-bottom: 1px solid var(--eat-outline-variant);
   margin-bottom: 2.5rem;
 }
-.hero-glow {
-  position: absolute;
-  top: -60px; left: 50%;
-  transform: translateX(-50%);
-  width: 700px; height: 300px;
-  background: radial-gradient(ellipse, rgba(227,199,107,.09) 0%, transparent 70%);
-  pointer-events: none;
+.hero-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  opacity: 0.85;
+}
+.hero-line {
+  flex: 0 0 3rem;
+  height: 1px;
+  background: var(--eat-secondary);
+  opacity: 0.3;
 }
 
 /* ── 區塊標題 ── */
