@@ -68,7 +68,7 @@
                         <Button variant="secondary" @click="leaveQueue" :loading="leaving">
                             <i class="bi bi-x-circle me-1"></i>取消候位
                         </Button>
-                        <Button variant="ghost" @click="fetchStatus" :loading="loading">
+                        <Button variant="tertiary" @click="fetchStatus" :loading="loading">
                             <i class="bi bi-arrow-clockwise me-1"></i>重新整理
                         </Button>
                     </div>

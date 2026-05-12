@@ -27,7 +27,7 @@
               <div v-if="r.status === 0" class="d-flex flex-column align-items-end gap-1">
                 <Button
                   variant="danger"
-                  size="sm"
+                  class="btn-eat-sm"
                   :disabled="!canCancel(r)"
                   :loading="cancelling && cancelTarget?.id === r.id"
                   @click="canCancel(r) && openCancel(r)"
