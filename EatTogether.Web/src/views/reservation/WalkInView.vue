@@ -59,10 +59,10 @@
 
       <!-- 重新整理 + 訂位按鈕 -->
       <div class="d-flex justify-content-end gap-2 mb-5">
-        <Button variant="secondary" size="sm" @click="fetchTableStatus" :loading="tableLoading">
+        <Button variant="secondary" class="btn-eat-sm" @click="fetchTableStatus" :loading="tableLoading">
           <i class="bi bi-arrow-clockwise me-1"></i>重新整理
         </Button>
-        <Button variant="primary" size="sm" :to="{ name: 'Reservation' }">
+        <Button variant="primary" class="btn-eat-sm" :to="{ name: 'Reservation' }">
           <i class="bi bi-calendar-plus me-1"></i>立即訂位
         </Button>
       </div>
@@ -207,7 +207,7 @@
             </div>
 
             <div class="d-flex justify-content-center mt-4">
-              <Button variant="primary" size="lg" @click="submitRegister" :loading="submitting">
+              <Button variant="primary" @click="submitRegister" :loading="submitting">
                 <i class="bi bi-ticket-perforated me-2"></i>確認登記候位
               </Button>
             </div>
@@ -289,8 +289,10 @@ import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useAuthStore } from '@/stores/auth.js'
+import { useToast } from '@/composables/useToast.js'
 
 const authStore = useAuthStore()
+const { show } = useToast()
 
 // ── 時間顯示 ──────────────────────────────────────
 const currentTimeStr = ref('')
@@ -342,6 +344,7 @@ async function fetchTodayStatus() {
 
 // ── 定時刷新 ─────────────────────────────────────
 let refreshTimer = null
+const currentTime = ref(new Date())   // ← 供 queueStatus computed 使用
 
 onMounted(async () => {
   fetchTableStatus()
@@ -349,6 +352,7 @@ onMounted(async () => {
   refreshTimer = setInterval(() => {
     fetchTableStatus()
     fetchTodayStatus()
+    currentTime.value = new Date()    // ← 每分鐘更新，觸發 queueStatus 重算
   }, 60_000)
 
   // 登入狀態：自動填入候位表單
@@ -372,7 +376,7 @@ const QUEUE_CLOSE_HOUR  = 21
 const QUEUE_CLOSE_MIN   = 0
 
 const queueStatus = computed(() => {
-  const now = new Date()
+  const now = currentTime.value        // ← 改用 reactive ref，computed 才會重算
   const h = now.getHours()
   const m = now.getMinutes()
   const totalMin = h * 60 + m
@@ -479,13 +483,14 @@ async function leaveQueue(id) {
     if (res.ok) {
       registered.value  = null
       queryResult.value = null
+      show('已取消候位', 'success')
       await fetchTodayStatus()
     } else {
       const body = await res.json().catch(() => ({}))
-      alert(body.message || '取消失敗，請稍後再試')
+      show(body.message || '取消失敗，請稍後再試', 'error')
     }
   } catch {
-    alert('取消失敗，請稍後再試')
+    show('取消失敗，請稍後再試', 'error')
   } finally {
     leaving.value = false
   }
