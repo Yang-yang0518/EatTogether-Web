@@ -139,7 +139,7 @@ namespace EatTogether.API.Models.Repositories
 			if (dish == null) return;
 
 			dish.IsActive = false;
-			dish.UpdatedAt = DateTime.UtcNow;
+			dish.UpdatedAt = DateTime.Now;
 
 			await _context.SaveChangesAsync();
 		}
@@ -150,7 +150,7 @@ namespace EatTogether.API.Models.Repositories
 			foreach (var d in dishes)
 			{
 				d.IsActive = false;
-				d.UpdatedAt = DateTime.UtcNow;
+				d.UpdatedAt = DateTime.Now;
 			}
 			await _context.SaveChangesAsync();
 		}
@@ -161,7 +161,7 @@ namespace EatTogether.API.Models.Repositories
 			if (dish == null) return;
 
 			dish.IsActive = true;
-			dish.UpdatedAt = DateTime.UtcNow;
+			dish.UpdatedAt = DateTime.Now;
 
 			await _context.SaveChangesAsync();
 		}
@@ -172,7 +172,7 @@ namespace EatTogether.API.Models.Repositories
 			foreach (var d in dishes)
 			{
 				d.IsActive = true;
-				d.UpdatedAt = DateTime.UtcNow;
+				d.UpdatedAt = DateTime.Now;
 			}
 			await _context.SaveChangesAsync();
 		}
@@ -212,7 +212,7 @@ namespace EatTogether.API.Models.Repositories
 				dish.IsPopular = dto.IsPopular;
 				dish.IsVegetarian = dto.IsVegetarian;
 				dish.SpicyLevel = dto.SpicyLevel;
-				dish.UpdatedAt = DateTime.UtcNow;
+				dish.UpdatedAt = DateTime.Now;
 
 				await _context.SaveChangesAsync();
 			}

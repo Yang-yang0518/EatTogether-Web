@@ -169,7 +169,10 @@ namespace EatTogether.API.Models.Repositories
 
 		public async Task UpdateOrderAsync(IEnumerable<int> orderedIds)
 		{
-			var categories = await _context.Categories.ToListAsync();
+			var idList = orderedIds.ToList();
+			var categories = await _context.Categories
+				.Where(c => idList.Contains(c.Id))
+				.ToListAsync();
 			int order = 1;
 			foreach (var id in orderedIds)
 			{

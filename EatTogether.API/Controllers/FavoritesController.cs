@@ -69,7 +69,7 @@ namespace EatTogether.API.Controllers
             {
                 MemberId = memberId.Value,
                 ProductId = product.Id,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
             });
 
             await _db.SaveChangesAsync();
@@ -127,7 +127,7 @@ namespace EatTogether.API.Controllers
                 {
                     MemberId = memberId.Value,
                     ProductId = p.Id,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                 });
 
             _db.MemberFavorites.AddRange(toAdd);

@@ -18,7 +18,7 @@ namespace EatTogether.API.Models.Repositories
                 {
                         _context = context;
                 }
-                public async Task AddItemAsync(SetmealItemDto itemDto)
+                public async Task AddItemAsync(SetMealItemDto itemDto)
                 {
                         var item = new SetMealItem
                         {
@@ -35,7 +35,7 @@ namespace EatTogether.API.Models.Repositories
                         await _context.SaveChangesAsync();
                 }
 
-                public async Task CreateAsync(Setmealdto dto)
+                public async Task CreateAsync(SetMealDto dto)
                 {
                         var setMeal = new SetMeal
                         {
@@ -60,17 +60,18 @@ namespace EatTogether.API.Models.Repositories
                         await _context.SaveChangesAsync();
                 }
 
-                public async Task<IEnumerable<Setmealdto>> GetAllAsync()
+                public async Task<IEnumerable<SetMealDto>> GetAllAsync()
                 {
                         return await _context.SetMeals
+                                .OrderBy(s => s.DisplayOrder)
                                 .Include(s => s.SetMealItems)
                                 .ThenInclude(i => i.Dish)
                                 .ThenInclude(d => d.Category)
-                                .Select(s => s.ToDo())
+                                .Select(s => s.ToDto())
                                 .ToListAsync();
                 }
 
-                public async Task<IEnumerable<Setmealdto>> GetAllActiveAsync()
+                public async Task<IEnumerable<SetMealDto>> GetAllActiveAsync()
                 {
                         return await _context.SetMeals
                                 .Where(s => s.IsActive)
@@ -78,11 +79,11 @@ namespace EatTogether.API.Models.Repositories
                                 .Include(s => s.SetMealItems)
                                 .ThenInclude(i => i.Dish)
                                 .ThenInclude(d => d.Category)
-                                .Select(s => s.ToDo())
+                                .Select(s => s.ToDto())
                                 .ToListAsync();
                 }
 
-                public async Task<Setmealdto?> GetByIdAsync(int id)
+                public async Task<SetMealDto?> GetByIdAsync(int id)
                 {
                     var setMeal = await _context.SetMeals
                                     .Where(s => s.Id == id)
@@ -91,7 +92,7 @@ namespace EatTogether.API.Models.Repositories
                                     .ThenInclude(d => d.Category)
                                     .FirstOrDefaultAsync();
 
-                    return setMeal?.ToDo();
+                    return setMeal?.ToDto();
                 }
 
                 public async Task RemoveItemAsync(int itemId)
@@ -173,29 +174,34 @@ namespace EatTogether.API.Models.Repositories
 
                 public async Task BatchDeleteAsync(IEnumerable<int> ids)
                 {
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
+                    {
                         // 1. 刪除相關的 SetMealItems
                         var items = await _context.SetMealItems.Where(i => ids.Contains(i.SetMealId)).ToListAsync();
                         if (items.Any())
-                        {
-                                _context.SetMealItems.RemoveRange(items);
-                                await _context.SaveChangesAsync();
-                        }
+                            _context.SetMealItems.RemoveRange(items);
 
                         // 2. 處理相關的 Products (將 SetMealId 設為 null)
                         var products = await _context.Products.Where(p => p.SetMealId.HasValue && ids.Contains(p.SetMealId.Value)).ToListAsync();
                         foreach (var p in products)
-                        {
-                                p.SetMealId = null;
-                        }
-                        await _context.SaveChangesAsync();
+                            p.SetMealId = null;
 
                         // 3. 刪除 SetMeals
                         var setMeals = await _context.SetMeals.Where(s => ids.Contains(s.Id)).ToListAsync();
                         _context.SetMeals.RemoveRange(setMeals);
+
                         await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        throw new Exception("批次刪除套餐失敗: " + ex.Message);
+                    }
                 }
 
-                public async Task UpdateAsync(Setmealdto dto)
+                public async Task UpdateAsync(SetMealDto dto)
                 {
                         var setMeal = await _context.SetMeals.FindAsync(dto.Id);
                         if (setMeal == null) return;
@@ -218,7 +224,7 @@ namespace EatTogether.API.Models.Repositories
                         await _context.SaveChangesAsync();
                 }
 
-                public async Task UpdateItemsAsync(int setMealId, IEnumerable<SetmealItemDto> itemDtos)
+                public async Task UpdateItemsAsync(int setMealId, IEnumerable<SetMealItemDto> itemDtos)
                 {
                     using var transaction = await _context.Database.BeginTransactionAsync();
                     try
