@@ -48,13 +48,13 @@ const localStar = ref(0)
 
 const _ratingKey = () => (authStore.member?.id ? `ratings-${authStore.member.id}` : null)
 
-const _ratedMap = () => {
+const ratedMap = computed(() => {
     const key = _ratingKey()
     return key ? JSON.parse(localStorage.getItem(key) || '{}') : {}
-}
+})
 
-const alreadyRated = computed(() => props.isLoggedIn && !!_ratedMap()[props.dish.id])
-const ratedScore = computed(() => _ratedMap()[props.dish.id] || 0)
+const alreadyRated = computed(() => props.isLoggedIn && !!ratedMap.value[props.dish.id])
+const ratedScore   = computed(() => ratedMap.value[props.dish.id] || 0)
 
 const submitRating = async (star) => {
     if (alreadyRated.value) return
@@ -68,7 +68,7 @@ const submitRating = async (star) => {
         const data = await res.json()
         const key = _ratingKey()
         if (key) {
-            const stored = _ratedMap()
+            const stored = { ...ratedMap.value }
             stored[props.dish.id] = star
             localStorage.setItem(key, JSON.stringify(stored))
         }

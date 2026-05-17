@@ -137,7 +137,6 @@
                     :class="{ 'is-soldout': dish.stockStatus === 2 }"
                     @click="dish.stockStatus !== 2 && openModal(dish)"
                     @mousemove="handleMouseMove($event)"
-                    @mouseleave="handleMouseLeave"
                 >
                     <div class="dish-img-wrap">
                         <img
@@ -487,8 +486,6 @@ const handleMouseMove = (event) => {
     card.style.setProperty('--my', `${(relY * 100).toFixed(1)}%`)
 }
 
-const handleMouseLeave = () => {}
-
 // ── 倒數計時 ─────────────────────────────────────────
 const currentTime = ref(new Date())
 let _clockTimer = null
@@ -757,6 +754,7 @@ const spicyLabel = (level) => {
 
 const formatImageUrl = (url) => {
     if (!url) return null
+    // 僅接受本地 /images/ 路徑，外部 URL 一律 fallback 至文字佔位
     return url.startsWith('/images/') ? url : null
 }
 

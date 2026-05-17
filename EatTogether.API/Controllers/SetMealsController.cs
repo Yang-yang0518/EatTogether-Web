@@ -22,8 +22,10 @@ public class SetMealsController : ControllerBase
     {
         if (!string.IsNullOrEmpty(dbImageUrl)) return dbImageUrl;
 
-        var staticRoot = _config["StaticFilesRoot"] ?? Directory.GetCurrentDirectory();
-        var imagesFolder = Path.Combine(staticRoot, "images");
+        var staticRoot = _config["StaticFilesRoot"];
+        var imagesFolder = !string.IsNullOrEmpty(staticRoot) && Directory.Exists(Path.Combine(staticRoot, "images"))
+            ? Path.Combine(staticRoot, "images")
+            : Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
 
         var safeName = name ?? "";
         foreach (var c in Path.GetInvalidFileNameChars())

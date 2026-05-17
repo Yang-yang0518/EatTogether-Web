@@ -1,5 +1,4 @@
 using EatTogether.API.Models.Services;
-using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

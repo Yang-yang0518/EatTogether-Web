@@ -346,6 +346,7 @@
                             <span>{{ selectedDish.dishName.charAt(0) }}</span>
                         </div>
                         <div class="modal-img-gradient"></div>
+                        <!-- URL 由父層 openShareItem 動態組裝，此處傳空值為預留介面 -->
                         <ShareMenu
                             v-model="shareMenuOpen"
                             share-url=""
@@ -548,6 +549,7 @@ const stockWidth = (id) => {
 
 const formatImageUrl = (url) => {
     if (!url) return null
+    // 僅接受本地 /images/ 路徑，外部 URL 一律 fallback 至文字佔位
     return url.startsWith('/images/') ? url : null
 }
 

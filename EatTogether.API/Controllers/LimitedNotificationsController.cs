@@ -60,7 +60,7 @@ namespace EatTogether.API.Controllers
             {
                 MemberId = memberId.Value,
                 DishId = dishId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
             });
 
             await _db.SaveChangesAsync();
