@@ -15,7 +15,9 @@ export default defineConfig(({ mode }) => {
         },
         server: {
             host: true,
-            // allowedHosts:['repacking-tasting-satiable.ngrok-free.dev'], // 允許 ngrok 的域名，以便在 ngrok 提供的 URL 上測試 API 代理功能(菜單面板的 API 代理功能需要在 ngrok 提供的 URL 上測試，因為它是從 ngrok 的域名發出請求的)
+            allowedHosts:['repacking-tasting-satiable.ngrok-free.dev'], 
+            // 允許 ngrok 的域名，以便在 ngrok 提供的 URL 上測試 API 代理功能(菜單面板的 API 代理功能需要在 ngrok 提供的 URL 上測試，因為它是從 ngrok 的域名發出請求的)
+            // 每次展示，網址需要做改動
             proxy: {
                 '/api': {
                     target: env.VITE_API_TARGET,

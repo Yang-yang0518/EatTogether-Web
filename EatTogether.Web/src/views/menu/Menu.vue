@@ -426,7 +426,7 @@ const shareMenuOpen = ref(false)
 const openShareItem = async (type) => {
     const dish = selectedDish.value
     if (!dish) return
-    const dishUrl     = `${window.location.origin}/menu?dish=${dish.id}`
+    const dishUrl     = `${window.location.origin}/menu?dish=${dish.id}&ngrok-skip-browser-warning=true`
     const encodedUrl  = encodeURIComponent(dishUrl)
     const encodedText = encodeURIComponent(`${dish.dishName} NT$${dish.price.toLocaleString()}`)
     switch (type) {
