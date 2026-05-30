@@ -1282,10 +1282,10 @@ import { useRoute } from 'vue-router'
 import { useOrderStore } from '@/stores/order'
 import { useAuthStore } from '@/stores/auth'
 import apiFetch from '@/utils/apiFetch'
-import DishDetailModal from '@/components/order/DishDetailModal.vue'
-import SetMealSelectModal from '@/components/order/SetMealSelectModal.vue'
-import OrderSuccessModal from '@/components/order/OrderSuccessModal.vue'
-import OrderAuthModal from '@/components/order/OrderAuthModal.vue'
+import DishDetailModal from '@/components/Order/DishDetailModal.vue'
+import SetMealSelectModal from '@/components/Order/SetMealSelectModal.vue'
+import OrderSuccessModal from '@/components/Order/OrderSuccessModal.vue'
+import OrderAuthModal from '@/components/Order/OrderAuthModal.vue'
 
 const route = useRoute()
 const store = useOrderStore()
