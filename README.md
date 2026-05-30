@@ -164,3 +164,23 @@ src/
 - **食材快取**：`IngredientCard.vue` 以頁面層級 `Map` 快取查詢結果，同一食材在元件生命週期內僅打一次 Gemini API，節省後端費用。
 - **深連結**：Menu.vue 與 Limited.vue 支援 Query String `?dish={id}` 直接開啟對應餐點 Modal，方便社群分享後跳轉。
 - **限定截止提醒**：系統於限定餐點截止日期前自動觸發寄信，訂閱者將收到 Email 通知，提醒把握最後供應時間。
+
+## 畫面截圖
+
+### 首頁(菜品輪播)
+<img width="1837" height="907" alt="大專-首頁" src="https://github.com/user-attachments/assets/7cb94dc6-b77d-48b7-8366-c79043ba83b2" />
+
+### 菜單與餐點詳情
+<img width="1462" height="875" alt="菜單" src="https://github.com/user-attachments/assets/8d9859cb-d8c3-420d-b2d9-90f201a523bb" />
+
+### AI 食材即時查詢
+<img width="592" height="422" alt="菜單AI即時查詢" src="https://github.com/user-attachments/assets/635f8dbd-d063-4c93-962e-d1aedd2ca8f9" />
+
+### 登入後評分留言
+<img width="652" height="435" alt="登入後可留言評分" src="https://github.com/user-attachments/assets/729b6918-0c34-4fb0-885f-5cc7023c96da" />
+
+### 限定餐點截止提醒
+<img width="635" height="587" alt="限定商品小鈴鐺通知" src="https://github.com/user-attachments/assets/afb05c55-942b-4601-844f-3e9680a18c35" />
+
+### 套餐比較
+<img width="1010" height="887" alt="套餐詳細比較" src="https://github.com/user-attachments/assets/c1176355-825b-4793-8f1b-3a78f0a26e15" />
