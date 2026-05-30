@@ -522,7 +522,7 @@
 </template>
 
 <script setup>
-import EditPickupModal from '@/components/order/EditPickupModal.vue'
+import EditPickupModal from '@/components/Order/EditPickupModal.vue'
 import { ref, computed, watch, onUnmounted } from 'vue'
 import apiFetch from '@/utils/apiFetch'
 
